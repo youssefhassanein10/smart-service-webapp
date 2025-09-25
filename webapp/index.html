@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой магазин в Telegram</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .product {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .product img {
+            width: 100%;
+            border-radius: 5px;
+        }
+        .price {
+            color: #0088cc;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .buy-btn {
+            background: #0088cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            width: 100%;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛍️ Мой магазин</h1>
+        <div id="products">
+            <!-- Товары появятся здесь -->
+        </div>
+    </div>
+
+    <script>
+        // Инициализация Telegram Web App
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Раскрываем на весь экран
+        
+        // Данные товаров (позже будем получать из базы)
+        const products = [
+            {
+                id: 1,
+                name: "Веб-разработка",
+                price: 1000,
+                image: "https://via.placeholder.com/300x200.png?text=Веб-разработка",
+                description: "Создание сайта под ключ"
+            },
+            {
+                id: 2, 
+                name: "Дизайн",
+                price: 2000,
+                image: "https://via.placeholder.com/300x200.png?text=Дизайн",
+                description: "UI/UX дизайн интерфейса"
+            }
+        ];
+
+        // Показываем товары
+        function showProducts() {
+            const container = document.getElementById('products');
+            
+            products.forEach(product => {
+                const productDiv = document.createElement('div');
+                productDiv.className = 'product';
+                productDiv.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}">
+                    <h3>${product.name}</h3>
+                    <p>${product.description}</p>
+                    <div class="price">${product.price} руб.</div>
+                    <button class="buy-btn" onclick="selectProduct(${product.id})">
+                        Выбрать этот товар
+                    </button>
+                `;
+                container.appendChild(productDiv);
+            });
+        }
+
+        // Выбор товара
+        function selectProduct(productId) {
+            const product = products.find(p => p.id === productId);
+            
+            // Показываем подтверждение
+            tg.showPopup({
+                title: "Подтверждение выбора",
+                message: Выбрать "${product.name}" за ${product.price} руб.?,
+                buttons: [
+                    {id: "yes", type: "default", text: "Да, выбрать"},
+                    {id: "no", type: "cancel", text: "Отмена"}
+                ]
+            }, function(buttonId) {
+                if (buttonId === "yes") {
+                    // Отправляем данные в бот
+                    tg.sendData(JSON.stringify({
+                        action: "product_selected",
+                        product_id: productId,
+                        product_name: product.name,
+                        price: product.price
+                    }));
+                    tg.close(); // Закрываем Mini App
+                }
+            });
+        }
+
+        // Запускаем при загрузке страницы
+        showProducts();
+    </script>
+</body>
+  </html>
