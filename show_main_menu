@@ -1,0 +1,40 @@
+async def show_main_menu(call: types.CallbackQuery):
+    keyboard = InlineKeyboardMarkup(row_width=2)
+    buttons = [
+        InlineKeyboardButton("🛍️ Магазин", callback_data="menu_shop"),
+        InlineKeyboardButton("📱 Mini App", web_app=WebAppInfo(url="https://your-username.github.io/telegram-shop-webapp/index.html")),
+        InlineKeyboardButton("📞 Контакты", callback_data="menu_contacts")
+    ]
+    
+    if call.from_user.id in ADMIN_IDS:
+        buttons.append(InlineKeyboardButton("👨‍💼 Админ", callback_data="menu_admin"))
+    
+    keyboard.add(*buttons)
+    
+    await call.message.edit_text(
+        "🏠 **Главное меню**\n\nВыберите действие:",
+        reply_markup=keyboard,
+        parse_mode='Markdown'
+    )
+    @dp.message_handler(content_types=['web_app_data'])
+async def handle_web_app_data(message: types.Message):
+    try:
+        data = json.loads(message.web_app_data.data)
+        action = data.get('action')
+        
+        if action == 'select_product':
+            product_id = data.get('product_id')
+            product_name = data.get('product_name')
+            price = data.get('price')
+            
+            # Здесь можно создать заказ или предложить оплатить
+            await message.answer(
+                f"✅ Вы выбрали товар из Mini App!\n\n"
+                f"🎁 {product_name}\n"
+                f"💵 {price}₽\n\n"
+                f"Для оформления заказа используйте команду /start или напишите админу: {ADMIN_USERNAME}",
+                parse_mode='Markdown'
+            )
+            
+    except Exception as e:
+        logger.error(f"Ошибка обработки Web App данных: {e}")
