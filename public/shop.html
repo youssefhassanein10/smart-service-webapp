@@ -74,4 +74,18 @@
     async function pay(paymentId) {
       await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json'
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: selectedProduct,
+          amount: 1,
+          payment_method_id: paymentId,
+          customer_contact: 'TelegramUser'
+        })
+      });
+      alert('✅ Заказ создан!');
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>
