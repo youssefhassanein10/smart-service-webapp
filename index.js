@@ -250,9 +250,9 @@ const DB_FILE = path.join(__dirname, 'database.sqlite');
     res.send(csv);
   });
 
-  // SPA fallback
+   // SPA fallback: всегда открывать магазин
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'shop.html')); // default to shop
+    res.sendFile(path.join(__dirname, 'public', 'shop.html')); 
   });
 
   app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
