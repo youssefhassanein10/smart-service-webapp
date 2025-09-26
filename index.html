@@ -42,3 +42,71 @@ const services = [
 
 // И сразу отобразите их
 displayServices(services);
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Магазин услуг</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .service { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .price { color: green; font-weight: bold; }
+        button { background: #2481cc; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Магазин услуг</h1>
+    <p>Выберите услугу для заказа</p>
+    <div id="services">Загрузка...</div>
+
+    <script>
+        // Загружаем услуги из JSON файла
+        fetch('data.json')
+            .then(response => response.json())
+            .then(data => {
+                displayServices(data.services);
+            })
+            .catch(error => {
+                document.getElementById('services').innerHTML = 
+                    '<p style="color: red;">Ошибка загрузки услуг. Проверьте файл data.json</p>';
+            });
+
+        function displayServices(services) {
+            const container = document.getElementById('services');
+            
+            if (services.length === 0) {
+                container.innerHTML = '<p>Услуги временно недоступны</p>';
+                return;
+            }
+
+            let html = '';
+            services.forEach(service => {
+                html += `
+                    <div class="service">
+                        <h3>${service.name}</h3>
+                        <p>${service.description}</p>
+                        <p class="price">${service.price} руб.</p>
+                        <button onclick="orderService(${service.id})">Заказать</button>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function orderService(serviceId) {
+            Telegram.WebApp.showPopup({
+                title: 'Заказ услуги',
+                message: Вы выбрали услугу #${serviceId},
+                buttons: [{ type: 'ok' }]
+            });
+        }
+
+        // Инициализация Telegram Web App
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+    </script>
+</body>
+</html>
