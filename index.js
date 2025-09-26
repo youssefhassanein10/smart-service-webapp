@@ -8,6 +8,7 @@ const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const { stringify } = require('csv-stringify/sync');
 const { v4: uuidv4 } = require('uuid');
+npm install express multer cors sqlite3 sqlite csv-stringify uuid
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'changeme';
 const PORT = process.env.PORT || 3000;
