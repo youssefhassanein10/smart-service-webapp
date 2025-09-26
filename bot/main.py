@@ -25,7 +25,7 @@ ADMIN_USERNAME = "Paymentprosu"
 ADMIN_CONTACT = "the_boss_manger"
 
 # URL Mini App (замените на ваш)
-MINI_APP_URL = "https://your-mini-app-domain.com"
+MINI_APP_URL = "https://youssefhassanein10.github.io/smart-service-webapp/"
 
 # Инициализация бота
 bot = Bot(token=API_TOKEN)
