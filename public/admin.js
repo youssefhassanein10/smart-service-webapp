@@ -57,10 +57,18 @@ async function saveShopSettings() {
 // Функция загрузки настроек
 async function loadShopSettings() {
     try {
-        const response = await fetch('/api/shop-settings');
-        const settings = await response.json();
+        console.log('🔄 Загрузка настроек магазина...');
         
-        // Заполняем форму
+        const response = await fetch('/api/shop-settings');
+        
+        if (!response.ok) {
+            throw new Error(`Ошибка загрузки: ${response.status}`);
+        }
+        
+        const settings = await response.json();
+        console.log('📖 Загруженные настройки:', settings);
+        
+        // Заполняем форму данными
         for (const key in settings) {
             const input = document.querySelector(`[name="${key}"]`);
             if (input && settings[key] !== null && settings[key] !== undefined) {
@@ -71,6 +79,8 @@ async function loadShopSettings() {
         console.log('✅ Настройки загружены');
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
+        // Устанавливаем значения по умолчанию
+        document.querySelector('[name="shop_name"]').value = 'Smart Service';
     }
 }
 
@@ -106,7 +116,8 @@ async function saveService() {
         if (response.ok) {
             alert('✅ Услуга добавлена!');
             form.reset();
-            document.querySelector('.image-preview').innerHTML = '';
+            const preview = document.querySelector('.image-preview');
+            if (preview) preview.innerHTML = '';
         } else {
             throw new Error(result.error || `Ошибка ${response.status}`);
         }
@@ -123,10 +134,19 @@ async function saveService() {
 // Функция предпросмотра изображения
 function previewImage(input) {
     const preview = document.querySelector('.image-preview');
+    if (!preview) {
+        console.error('❌ Элемент .image-preview не найден');
+        return;
+    }
+    
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px;">`;
+            preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px;">`;
+        }
+        reader.onerror = function(error) {
+            console.error('❌ Ошибка загрузки изображения:', error);
+            alert('Ошибка загрузки изображения');
         }
         reader.readAsDataURL(input.files[0]);
     }
@@ -140,7 +160,10 @@ function openTab(tabName) {
     });
     
     // Показываем выбранную вкладку
-    document.getElementById(tabName).classList.add('active');
+    const activeTab = document.getElementById(tabName);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
     
     // Обновляем активные кнопки
     document.querySelectorAll('.tab-button').forEach(btn => {
@@ -149,38 +172,89 @@ function openTab(tabName) {
     event.currentTarget.classList.add('active');
 }
 
+// Функция проверки соединения с сервером
+async function checkServerConnection() {
+    try {
+        const response = await fetch('/api/debug');
+        const data = await response.json();
+        console.log('🔧 Диагностика сервера:', data);
+        
+        if (data.status === 'running') {
+            console.log('✅ Сервер работает нормально');
+            if (data.database.poolConnected) {
+                console.log('✅ База данных подключена');
+            } else {
+                console.log('⚠️ Используется резервное хранилище');
+            }
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('❌ Ошибка диагностики:', error);
+        return false;
+    }
+}
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Админ-панель загружена');
+    
+    // Проверяем соединение с сервером
+    checkServerConnection();
     
     // Загружаем настройки
     loadShopSettings();
     
     // Настраиваем обработчики событий
-    document.getElementById('shopSettingsForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveShopSettings();
-    });
-    
-    document.getElementById('serviceForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveService();
-    });
-    
-    document.querySelector('input[name="image"]').addEventListener('change', function(e) {
-        previewImage(e.target);
-    });
-    
-    // Проверяем соединение с сервером
-    fetch('/api/debug')
-        .then(response => response.json())
-        .then(data => {
-            console.log('🔧 Диагностика сервера:', data);
-            if (data.status === 'connected') {
-                console.log('✅ Сервер и база данных работают нормально');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Ошибка диагностики:', error);
+    const shopForm = document.getElementById('shopSettingsForm');
+    if (shopForm) {
+        shopForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveShopSettings();
         });
+    }
+    
+    const serviceForm = document.getElementById('serviceForm');
+    if (serviceForm) {
+        serviceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveService();
+        });
+    }
+    
+    const imageInput = document.querySelector('input[name="image"]');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            previewImage(e.target);
+        });
+    }
+    
+    // Загружаем категории для выпадающего списка
+    loadCategories();
 });
+
+// Функция загрузки категорий
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/categories');
+        const categories = await response.json();
+        
+        const select = document.querySelector('select[name="category_id"]');
+        if (select && categories.length > 0) {
+            // Очищаем существующие опции (кроме первой)
+            while (select.children.length > 1) {
+                select.removeChild(select.lastChild);
+            }
+            
+            // Добавляем категории
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки категорий:', error);
+    }
+}
