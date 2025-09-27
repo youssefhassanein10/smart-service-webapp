@@ -1,3 +1,4 @@
+// Функция для сохранения настроек магазина
 async function saveShopSettings() {
     const form = document.getElementById('shopSettingsForm');
     const submitButton = form.querySelector('button[type="submit"]');
@@ -10,27 +11,22 @@ async function saveShopSettings() {
 
         // Собираем данные формы
         const formData = new FormData(form);
-        const data = {};
-        
-        // Преобразуем FormData в объект
-        for (let [key, value] of formData.entries()) {
-            data[key] = value;
-        }
+        const data = Object.fromEntries(formData.entries());
 
-        console.log('📤 Отправляемые данные:', data);
+        console.log('📤 Отправка данных:', data);
 
-        // Валидация обязательных полей
-        if (!data.shop_name || data.shop_name.trim() === '') {
-            alert('⚠️ Пожалуйста, заполните название магазина');
+        // Валидация
+        if (!data.shop_name || !data.shop_name.trim()) {
+            alert('⚠️ Введите название магазина');
             return;
         }
 
-        if (!data.holder_name || data.holder_name.trim() === '') {
-            alert('⚠️ Пожалуйста, заполните имя держателя');
+        if (!data.holder_name || !data.holder_name.trim()) {
+            alert('⚠️ Введите имя держателя');
             return;
         }
 
-        // Отправляем запрос на сервер
+        // Отправляем запрос
         const response = await fetch('/api/shop-settings', {
             method: 'POST',
             headers: {
@@ -39,41 +35,18 @@ async function saveShopSettings() {
             body: JSON.stringify(data)
         });
 
-        console.log('📥 Ответ сервера:', response.status, response.statusText);
-
-        // Парсим ответ
         const result = await response.json();
-        console.log('📋 Данные ответа:', result);
 
         if (response.ok) {
             alert('✅ Настройки успешно сохранены!');
-            console.log('💾 Настройки сохранены:', result);
-            
-            // Обновляем данные на странице
-            await loadShopSettings();
+            console.log('✅ Ответ сервера:', result);
         } else {
-            // Обрабатываем ошибки сервера
-            const errorMessage = result.error || result.message || `Ошибка ${response.status}`;
-            throw new Error(errorMessage);
+            throw new Error(result.error || `Ошибка ${response.status}`);
         }
 
     } catch (error) {
-        console.error('❌ Ошибка сохранения настроек:', error);
-        
-        // Более информативное сообщение об ошибке
-        let errorMessage = 'Неизвестная ошибка';
-        
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            errorMessage = 'Ошибка соединения с сервером. Проверьте интернет-соединение.';
-        } else if (error.message.includes('500')) {
-            errorMessage = 'Ошибка на сервере. Попробуйте позже.';
-        } else if (error.message.includes('404')) {
-            errorMessage = 'Сервер не найден. Проверьте URL адреса.';
-        } else {
-            errorMessage = error.message;
-        }
-        
-        alert('❌ Ошибка сохранения настроек: ' + errorMessage);
+        console.error('❌ Ошибка:', error);
+        alert('❌ Ошибка сохранения: ' + error.message);
     } finally {
         // Восстанавливаем кнопку
         submitButton.textContent = originalText;
@@ -81,62 +54,133 @@ async function saveShopSettings() {
     }
 }
 
-// Также обновим функцию loadShopSettings для лучшей обработки ошибок
+// Функция загрузки настроек
 async function loadShopSettings() {
     try {
-        console.log('🔄 Загрузка настроек магазина...');
-        
         const response = await fetch('/api/shop-settings');
-        
-        if (!response.ok) {
-            throw new Error(`Ошибка загрузки: ${response.status}`);
-        }
-        
         const settings = await response.json();
-        console.log('📖 Загруженные настройки:', settings);
         
-        // Заполняем форму данными
+        // Заполняем форму
         for (const key in settings) {
             const input = document.querySelector(`[name="${key}"]`);
-            if (input && settings[key] !== null) {
+            if (input && settings[key] !== null && settings[key] !== undefined) {
                 input.value = settings[key];
             }
         }
         
+        console.log('✅ Настройки загружены');
     } catch (error) {
-        console.error('❌ Ошибка загрузки настроек:', error);
-        
-        // Устанавливаем значения по умолчанию
-        document.querySelector('[name="shop_name"]').value = 'Smart Service';
-        console.log('📝 Установлены значения по умолчанию');
+        console.error('❌ Ошибка загрузки:', error);
     }
 }
 
-// Добавим функцию для проверки соединения с сервером
-async function checkServerConnection() {
-    try {
-        const response = await fetch('/api/shop-settings');
-        return response.ok;
-    } catch (error) {
-        console.error('🔌 Сервер недоступен:', error);
-        return false;
-    }
-}
-
-// Обновим обработчик загрузки страницы
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Админ-панель загружается...');
+// Функция для управления услугами
+async function saveService() {
+    const form = document.getElementById('serviceForm');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
     
-    // Проверяем соединение с сервером
-    checkServerConnection().then(isConnected => {
-        if (isConnected) {
-            console.log('✅ Соединение с сервером установлено');
-            loadShopSettings();
-        } else {
-            console.log('⚠️ Сервер недоступен');
-            alert('⚠️ Сервер временно недоступен. Некоторые функции могут не работать.');
+    try {
+        submitButton.textContent = 'Добавление...';
+        submitButton.disabled = true;
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        // Валидация
+        if (!data.article || !data.name || !data.price) {
+            alert('⚠️ Заполните артикул, название и цену');
+            return;
         }
+
+        const response = await fetch('/api/services', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert('✅ Услуга добавлена!');
+            form.reset();
+            document.querySelector('.image-preview').innerHTML = '';
+        } else {
+            throw new Error(result.error || `Ошибка ${response.status}`);
+        }
+
+    } catch (error) {
+        console.error('❌ Ошибка:', error);
+        alert('❌ Ошибка добавления услуги: ' + error.message);
+    } finally {
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+// Функция предпросмотра изображения
+function previewImage(input) {
+    const preview = document.querySelector('.image-preview');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px;">`;
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Функция переключения вкладок
+function openTab(tabName) {
+    // Скрываем все вкладки
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
     });
     
-    setupEventListeners();
+    // Показываем выбранную вкладку
+    document.getElementById(tabName).classList.add('active');
+    
+    // Обновляем активные кнопки
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Админ-панель загружена');
+    
+    // Загружаем настройки
+    loadShopSettings();
+    
+    // Настраиваем обработчики событий
+    document.getElementById('shopSettingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveShopSettings();
+    });
+    
+    document.getElementById('serviceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveService();
+    });
+    
+    document.querySelector('input[name="image"]').addEventListener('change', function(e) {
+        previewImage(e.target);
+    });
+    
+    // Проверяем соединение с сервером
+    fetch('/api/debug')
+        .then(response => response.json())
+        .then(data => {
+            console.log('🔧 Диагностика сервера:', data);
+            if (data.status === 'connected') {
+                console.log('✅ Сервер и база данных работают нормально');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Ошибка диагностики:', error);
+        });
 });
