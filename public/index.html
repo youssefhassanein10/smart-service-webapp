@@ -3,116 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Service</title>
+    <title>Smart Service - Магазин услуг</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
+            box-sizing: border-box;
         }
+        
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            background: #f8f9fa;
+        }
+        
         .shop-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #007bff, #0056b3);
             color: white;
-            padding: 20px;
+            padding: 30px 20px;
             text-align: center;
         }
-        .shop-details {
-            font-size: 14px;
-            margin-top: 10px;
-            opacity: 0.9;
-        }
-        .service-card {
+        
+        .shop-info {
             background: white;
-            margin: 15px;
             padding: 15px;
+            margin: 10px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 14px;
+            line-height: 1.4;
         }
+        
+        .services-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .service-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-2px);
+        }
+        
         .service-image {
             width: 100%;
             height: 200px;
             object-fit: cover;
             border-radius: 5px;
+            margin-bottom: 15px;
         }
+        
         .service-price {
-            color: #667eea;
+            color: #007bff;
+            font-size: 24px;
             font-weight: bold;
-            font-size: 18px;
+            margin: 10px 0;
         }
-        .category-title {
-            margin: 20px 15px 10px;
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
+        
+        .service-article {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #dc3545;
+            background: white;
+            margin: 20px;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
     <div class="shop-header">
         <h1 id="shopName">Smart Service</h1>
-        <div id="shopDetails" class="shop-details"></div>
+        <p>Магазин услуг</p>
+    </div>
+    
+    <div id="shopDetails" class="shop-info">
+        Загрузка информации о магазине...
+    </div>
+    
+    <div class="services-container">
+        <h2>Наши услуги</h2>
+        <div id="servicesList" class="loading">
+            Загрузка услуг...
+        </div>
     </div>
 
-    <div id="servicesList"></div>
-
     <script>
+        // Функция загрузки данных магазина
         async function loadShopData() {
             try {
-                // Загрузка настроек магазина
+                console.log('🔄 Загрузка данных магазина...');
+                
+                // Загружаем настройки магазина
                 const settingsResponse = await fetch('/api/shop-settings');
                 const settings = await settingsResponse.json();
                 
+                // Обновляем заголовок
                 document.getElementById('shopName').textContent = settings.shop_name || 'Smart Service';
                 
-                let detailsHtml = '';
-                if (settings.holder_name) detailsHtml += `Держатель: ${settings.holder_name}<br>`;
-                if (settings.inn) detailsHtml += `ИНН: ${settings.inn}<br>`;
-                if (settings.phone) detailsHtml += `Телефон: ${settings.phone}<br>`;
-                if (settings.email) detailsHtml += `Email: ${settings.email}`;
+                // Обновляем информацию о магазине
+                const shopDetails = document.getElementById('shopDetails');
+                shopDetails.innerHTML = `
+                    ${settings.holder_name ? `<strong>Держатель:</strong> ${settings.holder_name}<br>` : ''}
+                    ${settings.inn ? `<strong>ИНН:</strong> ${settings.inn}<br>` : ''}
+                    ${settings.registration_address ? `<strong>Адрес регистрации:</strong> ${settings.registration_address}<br>` : ''}
+                    ${settings.organization_address ? `<strong>Адрес организации:</strong> ${settings.organization_address}<br>` : ''}
+                    ${settings.email ? `<strong>Email:</strong> ${settings.email}<br>` : ''}
+                    ${settings.phone ? `<strong>Телефон:</strong> ${settings.phone}` : ''}
+                `;
                 
-                document.getElementById('shopDetails').innerHTML = detailsHtml;
-
-                // Загрузка услуг
+                console.log('✅ Настройки магазина загружены');
+                
+                // Загружаем услуги
                 const servicesResponse = await fetch('/api/services');
                 const services = await servicesResponse.json();
                 
-                // Группировка услуг по категориям
-                const categories = {};
-                services.forEach(service => {
-                    const categoryName = service.category_name || 'Без категории';
-                    if (!categories[categoryName]) {
-                        categories[categoryName] = [];
-                    }
-                    categories[categoryName].push(service);
-                });
-
-                let servicesHTML = '';
-                for (const [categoryName, categoryServices] of Object.entries(categories)) {
-                    servicesHTML += `<div class="category-title">${categoryName}</div>`;
-                    
-                    categoryServices.forEach(service => {
-                        servicesHTML += `
-                            <div class="service-card">
-                                ${service.image_url ? `<img src="${service.image_url}" class="service-image" alt="${service.name}">` : ''}
-                                <h3>${service.name}</h3>
-                                <p>${service.description || ''}</p>
-                                <p>Артикул: ${service.article}</p>
-                                <p class="service-price">Цена: ${service.price} руб.</p>
-                            </div>
-                        `;
-                    });
+                const servicesContainer = document.getElementById('servicesList');
+                
+                if (services.length === 0) {
+                    servicesContainer.innerHTML = '<div class="error">Услуги пока не добавлены</div>';
+                    return;
                 }
                 
-                document.getElementById('servicesList').innerHTML = servicesHTML;
+                // Отображаем услуги
+                servicesContainer.innerHTML = services.map(service => `
+                    <div class="service-card">
+                        ${service.image_url ? `<img src="${service.image_url}" class="service-image" alt="${service.name}">` : ''}
+                        <h3>${service.name}</h3>
+                        <div class="service-article">Артикул: ${service.article}</div>
+                        <div class="service-price">${parseFloat(service.price).toFixed(2)} руб.</div>
+                        ${service.description ? `<p>${service.description}</p>` : ''}
+                        ${service.category_name ? `<div><small>Категория: ${service.category_name}</small></div>` : ''}
+                    </div>
+                `).join('');
+                
+                console.log('✅ Услуги загружены:', services.length);
+                
             } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('servicesList').innerHTML = '<p style="text-align: center; color: red;">Ошибка загрузки данных. Попробуйте позже.</p>';
+                console.error('❌ Ошибка загрузки данных:', error);
+                
+                document.getElementById('servicesList').innerHTML = `
+                    <div class="error">
+                        Ошибка загрузки данных. Пожалуйста, попробуйте позже.
+                    </div>
+                `;
             }
         }
-
-        // Инициализация при загрузке страницы
+        
+        // Загружаем данные при старте
         document.addEventListener('DOMContentLoaded', loadShopData);
+        
+        // Обновляем данные каждые 30 секунд
+        setInterval(loadShopData, 30000);
     </script>
 </body>
 </html>
