@@ -1,1 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Smart Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-button.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #5a6fd8;
+        }
+        .image-preview {
+            max-width: 200px;
+            margin-top: 10px;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Панель управления Smart Service</h1>
+    
+    <div class="tabs">
+        <button class="tab-button active" onclick="openTab('shop-settings')">Настройки магазина</button>
+        <button class="tab-button" onclick="openTab('categories')">Категории</button>
+        <button class="tab-button" onclick="openTab('services')">Услуги</button>
+    </div>
 
+    <!-- Настройки магазина -->
+    <div id="shop-settings" class="tab-content active">
+        <h3>Настройки магазина</h3>
+        <form id="shopSettingsForm">
+            <div class="form-group">
+                <label>Название магазина:</label>
+                <input type="text" name="shop_name" required>
+            </div>
+            <div class="form-group">
+                <label>Держатель ИП:</label>
+                <input type="text" name="holder_name" required>
+            </div>
+            <div class="form-group">
+                <label>ИНН:</label>
+                <input type="text" name="inn" required>
+            </div>
+            <div class="form-group">
+                <label>Адрес регистрации:</label>
+                <textarea name="registration_address" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Адрес организации:</label>
+                <textarea name="organization_address" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label>Телефон:</label>
+                <input type="tel" name="phone" required>
+            </div>
+            <button type="submit">Сохранить настройки</button>
+        </form>
+        <div id="shopMessage"></div>
+    </div>
+
+    <!-- Управление категориями -->
+    <div id="categories" class="tab-content">
+        <h3>Управление категориями</h3>
+        <form id="categoryForm">
+            <div class="form-group">
+                <label>Название категории:</label>
+                <input type="text" name="name" required>
+            </div>
+            <div class="form-group">
+                <label>Описание:</label>
+                <textarea name="description"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Порядок сортировки:</label>
+                <input type="number" name="sort_order" value="0">
+            </div>
+            <button type="submit">Добавить категорию</button>
+        </form>
+        <div id="categoryMessage"></div>
+    </div>
+
+    <!-- Управление услугами -->
+    <div id="services" class="tab-content">
+        <h3>Управление услугами</h3>
+        <form id="serviceForm">
+            <div class="form-group">
+                <label>Артикул:</label>
+                <input type="text" name="article" required>
+            </div>
+            <div class="form-group">
+                <label>Название услуги:</label>
+                <input type="text" name="name" required>
+            </div>
+            <div class="form-group">
+                <label>Описание:</label>
+                <textarea name="description"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Цена:</label>
+                <input type="number" name="price" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label>Категория:</label>
+                <select name="category_id">
+                    <option value="">Без категории</option>
+                </select>
+            </div>
+            <button type="submit">Добавить услугу</button>
+        </form>
+        <div id="serviceMessage"></div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
