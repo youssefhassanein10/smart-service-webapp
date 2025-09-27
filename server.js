@@ -1,24 +1,46 @@
 const express = require('express');
 const fileUpload = require('express-fileupload');
 const { Pool } = require('pg');
-require('dotenv').config();
+const path = require('path');
 
 const app = express();
 app.use(express.json());
 app.use(fileUpload());
 app.use(express.static('public'));
 
-// Подключение к PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+// Функция для получения подключения к БД
+async function getDatabaseConnection() {
+  // Проверяем переменные окружения Railway
+  const databaseUrl = process.env.DATABASE_URL;
+  
+  if (!databaseUrl) {
+    console.log('❌ DATABASE_URL не найден. Убедитесь, что база данных добавлена в Railway.');
+    return null;
+  }
 
-// Функция инициализации базы данных
-async function initDatabase() {
-  const client = await pool.connect();
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: { rejectUnauthorized: false }
+  });
+
   try {
-    // Создание таблицы настроек магазина
+    // Проверяем подключение
+    const client = await pool.connect();
+    console.log('✅ Подключение к базе данных установлено');
+    client.release();
+    return pool;
+  } catch (error) {
+    console.log('❌ Ошибка подключения к базе:', error.message);
+    return null;
+  }
+}
+
+// Инициализация базы данных
+async function initializeDatabase(pool) {
+  try {
+    const client = await pool.connect();
+    
+    // Создаем таблицы
     await client.query(`
       CREATE TABLE IF NOT EXISTS shop_settings (
         id SERIAL PRIMARY KEY,
@@ -34,7 +56,6 @@ async function initDatabase() {
       )
     `);
 
-    // Создание таблицы категорий
     await client.query(`
       CREATE TABLE IF NOT EXISTS categories (
         id SERIAL PRIMARY KEY,
@@ -46,7 +67,6 @@ async function initDatabase() {
       )
     `);
 
-    // Создание таблицы услуг
     await client.query(`
       CREATE TABLE IF NOT EXISTS services (
         id SERIAL PRIMARY KEY,
@@ -62,93 +82,118 @@ async function initDatabase() {
       )
     `);
 
-    // Проверяем, есть ли хотя бы одна запись в настройках, если нет - вставляем начальные данные
-    const settingsResult = await client.query('SELECT COUNT(*) FROM shop_settings');
-    if (parseInt(settingsResult.rows[0].count) === 0) {
+    // Добавляем начальные данные
+    const settingsCheck = await client.query('SELECT COUNT(*) FROM shop_settings');
+    if (parseInt(settingsCheck.rows[0].count) === 0) {
       await client.query(`
         INSERT INTO shop_settings (shop_name, holder_name, inn, registration_address, organization_address, email, phone) 
-        VALUES ('Smart Service', 'Ваше имя', '1234567890', 'Адрес регистрации', 'Адрес организации', 'email@example.com', '+79991234567')
+        VALUES ('Smart Service', 'Иван Иванов', '1234567890', 'г. Москва, ул. Примерная, д. 1', 'г. Москва, ул. Примерная, д. 1', 'example@email.com', '+79991234567')
       `);
     }
 
-    console.log('База данных инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации базы данных:', error);
-  } finally {
     client.release();
+    console.log('✅ База данных инициализирована');
+    return true;
+  } catch (error) {
+    console.error('❌ Ошибка инициализации базы:', error);
+    return false;
   }
 }
 
-// Инициализируем базу данных при запуске сервера
-initDatabase();
-
-// ... остальные маршруты API ...
-
-// API для получения данных магазина
-app.get('/api/shop-settings', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM shop_settings ORDER BY id DESC LIMIT 1');
-    res.json(result.rows[0] || {});
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// Запуск приложения
+async function startServer() {
+  const pool = await getDatabaseConnection();
+  
+  if (!pool) {
+    console.log('🚧 Запуск без базы данных (режим заглушки)');
+    // Режим без базы данных - для тестирования
+    setupRoutesWithoutDB();
+  } else {
+    await initializeDatabase(pool);
+    setupRoutesWithDB(pool);
   }
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Сервер запущен на порту ${PORT}`);
+    console.log(`📱 Мини-приложение доступно по адресу: https://your-project.railway.app`);
+  });
+}
+
+// Настройка маршрутов с базой данных
+function setupRoutesWithDB(pool) {
+  // API для настроек магазина
+  app.get('/api/shop-settings', async (req, res) => {
+    try {
+      const result = await pool.query('SELECT * FROM shop_settings ORDER BY id DESC LIMIT 1');
+      res.json(result.rows[0] || {});
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/shop-settings', async (req, res) => {
+    try {
+      const { shop_name, holder_name, inn, registration_address, organization_address, email, phone } = req.body;
+      
+      await pool.query('DELETE FROM shop_settings');
+      const result = await pool.query(
+        'INSERT INTO shop_settings (shop_name, holder_name, inn, registration_address, organization_address, email, phone) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [shop_name, holder_name, inn, registration_address, organization_address, email, phone]
+      );
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // API для услуг
+  app.get('/api/services', async (req, res) => {
+    try {
+      const result = await pool.query('SELECT * FROM services WHERE is_active = true ORDER BY name');
+      res.json(result.rows);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+}
+
+// Заглушки для режима без базы данных
+function setupRoutesWithoutDB() {
+  app.get('/api/shop-settings', (req, res) => {
+    res.json({
+      shop_name: 'Smart Service',
+      holder_name: 'Иван Иванов',
+      inn: '1234567890',
+      registration_address: 'г. Москва, ул. Примерная, д. 1',
+      organization_address: 'г. Москва, ул. Примерная, д. 1',
+      email: 'example@email.com',
+      phone: '+79991234567'
+    });
+  });
+
+  app.get('/api/services', (req, res) => {
+    res.json([
+      {
+        id: 1,
+        article: 'SRV001',
+        name: 'Пример услуги',
+        description: 'Описание примерной услуги',
+        price: 1000,
+        image_url: null
+      }
+    ]);
+  });
+}
+
+// Статические файлы
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// API для обновления настроек магазина
-app.post('/api/shop-settings', async (req, res) => {
-  try {
-    const {
-      shop_name, holder_name, inn, registration_address,
-      organization_address, email, phone
-    } = req.body;
-
-    // Удаляем старые настройки и вставляем новые (или можно сделать UPDATE, но для простоты будем всегда вставлять новую запись)
-    await pool.query('DELETE FROM shop_settings');
-    const result = await pool.query(`
-      INSERT INTO shop_settings 
-      (shop_name, holder_name, inn, registration_address, organization_address, email, phone)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-    `, [shop_name, holder_name, inn, registration_address, organization_address, email, phone]);
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// API для услуг
-app.get('/api/services', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT s.*, c.name as category_name 
-      FROM services s 
-      LEFT JOIN categories c ON s.category_id = c.id 
-      WHERE s.is_active = true 
-      ORDER BY c.sort_order, s.name
-    `);
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// API для категорий
-app.get('/api/categories', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT * FROM categories 
-      WHERE is_active = true 
-      ORDER BY sort_order, name
-    `);
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Запуск сервера
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+startServer();
