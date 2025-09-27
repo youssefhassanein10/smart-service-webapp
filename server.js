@@ -3,6 +3,7 @@ const fileUpload = require('express-fileupload');
 const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
+const { format } = require('date-fns');
 
 const app = express();
 
@@ -36,11 +37,41 @@ let memoryData = {
         registration_address: 'г. Москва, ул. Примерная, д. 1',
         organization_address: 'г. Москва, ул. Примерная, д. 1',
         email: 'example@email.com',
-        phone: '+79991234567'
+        phone: '+79991234567',
+        admin_contact: '@Paymentprosu'
     },
     services: [],
     categories: [],
-    orders: []
+    orders: [],
+    payment_methods: [
+        {
+            id: 'sberbank',
+            name: 'Сбербанк',
+            icon: '🏦',
+            details: 'Перевод по номеру карты/телефона',
+            instructions: 'Переведите сумму на карту Сбербанка: 2202 2002 2020 2020\nИли по номеру телефона: +7 900 123-45-67',
+            is_active: true,
+            sort_order: 1
+        },
+        {
+            id: 'tinkoff',
+            name: 'Тинькофф',
+            icon: '💳',
+            details: 'Перевод на карту Тинькофф',
+            instructions: 'Переведите сумму на карту Тинькофф: 2200 7007 8998 1122\nВладелец: Иван Иванов',
+            is_active: true,
+            sort_order: 2
+        },
+        {
+            id: 'nspk',
+            name: 'QR НСПК',
+            icon: '📱',
+            details: 'Оплата по QR-коду (СБП)',
+            instructions: 'Отсканируйте QR-код через приложение вашего банка с поддержкой СБП',
+            is_active: true,
+            sort_order: 3
+        }
+    ]
 };
 
 // Функция для сохранения загруженных изображений
@@ -100,6 +131,7 @@ async function connectDatabase() {
                 organization_address TEXT,
                 email VARCHAR(255),
                 phone VARCHAR(50),
+                admin_contact VARCHAR(255) DEFAULT '@Paymentprosu',
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
             )
@@ -137,14 +169,32 @@ async function connectDatabase() {
                 id SERIAL PRIMARY KEY,
                 service_id INTEGER REFERENCES services(id),
                 service_name VARCHAR(255) NOT NULL,
+                service_article VARCHAR(100),
                 service_price DECIMAL(10,2) NOT NULL,
                 customer_name VARCHAR(255),
                 customer_contact VARCHAR(255),
                 payment_method VARCHAR(100),
                 status VARCHAR(50) DEFAULT 'pending',
+                is_manual BOOLEAN DEFAULT false,
+                order_date TIMESTAMP DEFAULT NOW(),
                 admin_contact VARCHAR(255) DEFAULT '@Paymentprosu',
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+
+        // Таблица способов оплаты
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS payment_methods (
+                id SERIAL PRIMARY KEY,
+                method_id VARCHAR(100) UNIQUE NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                icon VARCHAR(10),
+                details TEXT,
+                instructions TEXT,
+                is_active BOOLEAN DEFAULT true,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
             )
         `);
 
@@ -152,13 +202,33 @@ async function connectDatabase() {
         const settingsCount = await client.query('SELECT COUNT(*) FROM shop_settings');
         if (parseInt(settingsCount.rows[0].count) === 0) {
             await client.query(`
-                INSERT INTO shop_settings (shop_name, holder_name, inn, registration_address, organization_address, email, phone) 
-                VALUES ('Smart Service', 'Иван Иванов', '1234567890', 'г. Москва, ул. Примерная, д. 1', 'г. Москва, ул. Примерная, д. 1', 'example@email.com', '+79991234567')
+                INSERT INTO shop_settings (shop_name, holder_name, inn, registration_address, organization_address, email, phone, admin_contact) 
+                VALUES ('Smart Service', 'Иван Иванов', '1234567890', 'г. Москва, ул. Примерная, д. 1', 'г. Москва, ул. Примерная, д. 1', 'example@email.com', '+79991234567', '@Paymentprosu')
             `);
             console.log('✅ Начальные данные добавлены в БД');
         }
 
+        // Проверяем есть ли способы оплаты
+        const paymentMethodsCount = await client.query('SELECT COUNT(*) FROM payment_methods');
+        if (parseInt(paymentMethodsCount.rows[0].count) === 0) {
+            const defaultMethods = [
+                ['sberbank', 'Сбербанк', '🏦', 'Перевод по номеру карты/телефона', 'Переведите сумму на карту Сбербанка: 2202 2002 2020 2020\nИли по номеру телефона: +7 900 123-45-67', true, 1],
+                ['tinkoff', 'Тинькофф', '💳', 'Перевод на карту Тинькофф', 'Переведите сумму на карту Тинькофф: 2200 7007 8998 1122\nВладелец: Иван Иванов', true, 2],
+                ['nspk', 'QR НСПК', '📱', 'Оплата по QR-коду (СБП)', 'Отсканируйте QR-код через приложение вашего банка с поддержкой СБП', true, 3]
+            ];
+            
+            for (const method of defaultMethods) {
+                await client.query(
+                    `INSERT INTO payment_methods (method_id, name, icon, details, instructions, is_active, sort_order) 
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    method
+                );
+            }
+            console.log('✅ Способы оплаты добавлены в БД');
+        }
+
         client.release();
+        console.log('✅ База данных инициализирована');
         return pool;
     } catch (error) {
         console.error('❌ Ошибка подключения к базе данных:', error.message);
@@ -197,7 +267,8 @@ app.post('/api/shop-settings', async (req, res) => {
             registration_address, 
             organization_address, 
             email, 
-            phone 
+            phone,
+            admin_contact 
         } = req.body;
 
         if (!shop_name || !holder_name) {
@@ -209,10 +280,10 @@ app.post('/api/shop-settings', async (req, res) => {
             
             const result = await pool.query(
                 `INSERT INTO shop_settings 
-                 (shop_name, holder_name, inn, registration_address, organization_address, email, phone) 
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                 (shop_name, holder_name, inn, registration_address, organization_address, email, phone, admin_contact) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
                  RETURNING *`,
-                [shop_name, holder_name, inn, registration_address, organization_address, email, phone]
+                [shop_name, holder_name, inn, registration_address, organization_address, email, phone, admin_contact]
             );
 
             console.log('✅ Настройки сохранены в БД');
@@ -225,7 +296,8 @@ app.post('/api/shop-settings', async (req, res) => {
                 registration_address, 
                 organization_address, 
                 email, 
-                phone
+                phone,
+                admin_contact
             };
             console.log('✅ Настройки сохранены в памяти');
             res.json(memoryData.settings);
@@ -304,10 +376,10 @@ app.get('/api/orders', async (req, res) => {
     try {
         if (pool) {
             const result = await pool.query(`
-                SELECT o.*, s.name as service_name 
+                SELECT o.*, s.article as service_article 
                 FROM orders o 
                 LEFT JOIN services s ON o.service_id = s.id 
-                ORDER BY o.created_at DESC
+                ORDER BY o.order_date DESC, o.created_at DESC
             `);
             return res.json(result.rows);
         }
@@ -320,7 +392,7 @@ app.get('/api/orders', async (req, res) => {
 // Создать заказ
 app.post('/api/orders', async (req, res) => {
     try {
-        const { service_id, service_name, service_price, customer_name, customer_contact, payment_method } = req.body;
+        const { service_id, service_name, service_article, service_price, customer_name, customer_contact, payment_method } = req.body;
 
         if (!service_id || !customer_name || !payment_method) {
             return res.status(400).json({ error: 'Заполните обязательные поля' });
@@ -328,10 +400,10 @@ app.post('/api/orders', async (req, res) => {
 
         if (pool) {
             const result = await pool.query(
-                `INSERT INTO orders (service_id, service_name, service_price, customer_name, customer_contact, payment_method) 
-                 VALUES ($1, $2, $3, $4, $5, $6) 
+                `INSERT INTO orders (service_id, service_name, service_article, service_price, customer_name, customer_contact, payment_method) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7) 
                  RETURNING *`,
-                [service_id, service_name, parseFloat(service_price), customer_name, customer_contact, payment_method]
+                [service_id, service_name, service_article, parseFloat(service_price), customer_name, customer_contact, payment_method]
             );
             console.log('✅ Заказ создан:', result.rows[0]);
             return res.json(result.rows[0]);
@@ -340,13 +412,16 @@ app.post('/api/orders', async (req, res) => {
                 id: memoryData.orders.length + 1,
                 service_id,
                 service_name,
+                service_article,
                 service_price: parseFloat(service_price),
                 customer_name,
                 customer_contact,
                 payment_method,
                 status: 'pending',
+                is_manual: false,
                 admin_contact: '@Paymentprosu',
-                created_at: new Date()
+                created_at: new Date(),
+                order_date: new Date()
             };
             memoryData.orders.push(newOrder);
             console.log('✅ Заказ создан в памяти');
@@ -354,6 +429,51 @@ app.post('/api/orders', async (req, res) => {
         }
     } catch (error) {
         console.error('❌ Ошибка создания заказа:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Создать заказ вручную
+app.post('/api/manual-orders', async (req, res) => {
+    try {
+        const { service_name, service_article, service_price, customer_name, customer_contact, payment_method, order_date } = req.body;
+
+        if (!service_name || !service_price || !customer_name || !payment_method) {
+            return res.status(400).json({ error: 'Заполните обязательные поля' });
+        }
+
+        const orderDate = order_date ? new Date(order_date) : new Date();
+
+        if (pool) {
+            const result = await pool.query(
+                `INSERT INTO orders (service_name, service_article, service_price, customer_name, customer_contact, payment_method, is_manual, order_date, status) 
+                 VALUES ($1, $2, $3, $4, $5, $6, true, $7, 'confirmed') 
+                 RETURNING *`,
+                [service_name, service_article, parseFloat(service_price), customer_name, customer_contact, payment_method, orderDate]
+            );
+            console.log('✅ Ручной заказ создан:', result.rows[0]);
+            return res.json(result.rows[0]);
+        } else {
+            const newOrder = {
+                id: memoryData.orders.length + 1,
+                service_name,
+                service_article,
+                service_price: parseFloat(service_price),
+                customer_name,
+                customer_contact,
+                payment_method,
+                status: 'confirmed',
+                is_manual: true,
+                admin_contact: '@Paymentprosu',
+                created_at: new Date(),
+                order_date: orderDate
+            };
+            memoryData.orders.push(newOrder);
+            console.log('✅ Ручной заказ создан в памяти');
+            res.json(newOrder);
+        }
+    } catch (error) {
+        console.error('❌ Ошибка создания ручного заказа:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -383,6 +503,130 @@ app.put('/api/orders/:id', async (req, res) => {
     }
 });
 
+// Удалить заказ
+app.delete('/api/orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (pool) {
+            await pool.query('DELETE FROM orders WHERE id = $1', [id]);
+            res.json({ message: 'Заказ удален' });
+        } else {
+            memoryData.orders = memoryData.orders.filter(o => o.id != id);
+            res.json({ message: 'Заказ удален из памяти' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API для способов оплаты
+app.get('/api/payment-methods', async (req, res) => {
+    try {
+        if (pool) {
+            const result = await pool.query('SELECT * FROM payment_methods WHERE is_active = true ORDER BY sort_order, name');
+            return res.json(result.rows);
+        }
+        res.json(memoryData.payment_methods.filter(m => m.is_active));
+    } catch (error) {
+        res.json(memoryData.payment_methods.filter(m => m.is_active));
+    }
+});
+
+// Получить все способы оплаты (для админки)
+app.get('/api/admin/payment-methods', async (req, res) => {
+    try {
+        if (pool) {
+            const result = await pool.query('SELECT * FROM payment_methods ORDER BY sort_order, name');
+            return res.json(result.rows);
+        }
+        res.json(memoryData.payment_methods);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Сохранить способ оплаты
+app.post('/api/payment-methods', async (req, res) => {
+    try {
+        const { method_id, name, icon, details, instructions, is_active, sort_order } = req.body;
+
+        if (!method_id || !name) {
+            return res.status(400).json({ error: 'ID и название способа оплаты обязательны' });
+        }
+
+        if (pool) {
+            // Проверяем существует ли уже метод с таким ID
+            const existing = await pool.query('SELECT * FROM payment_methods WHERE method_id = $1', [method_id]);
+            
+            if (existing.rows.length > 0) {
+                // Обновляем существующий
+                const result = await pool.query(
+                    `UPDATE payment_methods 
+                     SET name = $1, icon = $2, details = $3, instructions = $4, is_active = $5, sort_order = $6 
+                     WHERE method_id = $7 
+                     RETURNING *`,
+                    [name, icon, details, instructions, is_active, sort_order, method_id]
+                );
+                return res.json(result.rows[0]);
+            } else {
+                // Создаем новый
+                const result = await pool.query(
+                    `INSERT INTO payment_methods (method_id, name, icon, details, instructions, is_active, sort_order) 
+                     VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                     RETURNING *`,
+                    [method_id, name, icon, details, instructions, is_active, sort_order]
+                );
+                return res.json(result.rows[0]);
+            }
+        } else {
+            // Режим памяти
+            const existingIndex = memoryData.payment_methods.findIndex(m => m.id === method_id);
+            
+            if (existingIndex >= 0) {
+                // Обновляем существующий
+                memoryData.payment_methods[existingIndex] = {
+                    ...memoryData.payment_methods[existingIndex],
+                    name, icon, details, instructions, is_active, sort_order
+                };
+                return res.json(memoryData.payment_methods[existingIndex]);
+            } else {
+                // Создаем новый
+                const newMethod = {
+                    id: method_id,
+                    method_id,
+                    name, icon, details, instructions, 
+                    is_active: is_active !== false,
+                    sort_order: sort_order || 0,
+                    created_at: new Date()
+                };
+                memoryData.payment_methods.push(newMethod);
+                return res.json(newMethod);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка сохранения способа оплаты:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Удалить способ оплаты
+app.delete('/api/payment-methods/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (pool) {
+            await pool.query('DELETE FROM payment_methods WHERE method_id = $1', [id]);
+            res.json({ message: 'Способ оплаты удален' });
+        } else {
+            memoryData.payment_methods = memoryData.payment_methods.filter(m => m.id !== id);
+            res.json({ message: 'Способ оплаты удален из памяти' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // API для категорий
 app.get('/api/categories', async (req, res) => {
     try {
@@ -396,75 +640,91 @@ app.get('/api/categories', async (req, res) => {
     }
 });
 
-// API для получения способов оплаты
-app.get('/api/payment-methods', (req, res) => {
-    const paymentMethods = [
-        {
-            id: 'sberbank',
-            name: 'Сбербанк',
-            icon: '🏦',
-            details: 'Перевод по номеру карты/телефона',
-            instructions: 'Переведите сумму на карту Сбербанка: 2202 2002 2020 2020\nИли по номеру телефона: +7 900 123-45-67'
-        },
-        {
-            id: 'tinkoff',
-            name: 'Тинькофф',
-            icon: '💳',
-            details: 'Перевод на карту Тинькофф',
-            instructions: 'Переведите сумму на карту Тинькофф: 2200 7007 8998 1122\nВладелец: Иван Иванов'
-        },
-        {
-            id: 'vtb',
-            name: 'ВТБ',
-            icon: '🏛️',
-            details: 'Перевод на карту ВТБ',
-            instructions: 'Переведите сумму на карту ВТБ: 2202 2003 3004 4005\nВладелец: Иван Иванов'
-        },
-        {
-            id: 'alfabank',
-            name: 'Альфа-Банк',
-            icon: '🔷',
-            details: 'Перевод на карту Альфа-Банка',
-            instructions: 'Переведите сумму на карту Альфа-Банка: 2200 0000 1111 2222\nВладелец: Иван Иванов'
-        },
-        {
-            id: 'gazprom',
-            name: 'Газпромбанк',
-            icon: '⛽',
-            details: 'Перевод на карту Газпромбанка',
-            instructions: 'Переведите сумму на карту Газпромбанка: 2200 3333 4444 5555\nВладелец: Иван Иванов'
-        },
-        {
-            id: 'raiffeisen',
-            name: 'Райффайзенбанк',
-            icon: '🏢',
-            details: 'Перевод на карту Райффайзенбанка',
-            instructions: 'Переведите сумму на карту Райффайзенбанка: 2200 6666 7777 8888\nВладелец: Иван Иванов'
-        },
-        {
-            id: 'qiwi',
-            name: 'QIWI',
-            icon: '👛',
-            details: 'Перевод на кошелек QIWI',
-            instructions: 'Переведите сумму на QIWI кошелек: +7 900 123-45-67'
-        },
-        {
-            id: 'yoomoney',
-            name: 'ЮMoney',
-            icon: '💷',
-            details: 'Перевод на кошелек ЮMoney',
-            instructions: 'Переведите сумму на кошелек ЮMoney: 4100 1234 5678 9012'
-        },
-        {
-            id: 'nspk',
-            name: 'QR НСПК',
-            icon: '📱',
-            details: 'Оплата по QR-коду (СБП)',
-            instructions: 'Отсканируйте QR-код через приложение вашего банка с поддержкой СБП'
+// API для получения отчета
+app.get('/api/reports', async (req, res) => {
+    try {
+        const { start_date, end_date, status } = req.query;
+        let query = `
+            SELECT o.*, s.article as service_article 
+            FROM orders o 
+            LEFT JOIN services s ON o.service_id = s.id 
+            WHERE 1=1
+        `;
+        const params = [];
+        let paramCount = 0;
+
+        if (start_date) {
+            paramCount++;
+            query += ` AND o.order_date >= $${paramCount}`;
+            params.push(start_date);
         }
-    ];
-    
-    res.json(paymentMethods);
+
+        if (end_date) {
+            paramCount++;
+            query += ` AND o.order_date <= $${paramCount}`;
+            params.push(end_date + ' 23:59:59');
+        }
+
+        if (status) {
+            paramCount++;
+            query += ` AND o.status = $${paramCount}`;
+            params.push(status);
+        }
+
+        query += ' ORDER BY o.order_date DESC, o.created_at DESC';
+
+        if (pool) {
+            const result = await pool.query(query, params);
+            
+            // Статистика
+            const statsResult = await pool.query(`
+                SELECT 
+                    COUNT(*) as total_orders,
+                    SUM(service_price) as total_revenue,
+                    COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed_orders,
+                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_orders
+                FROM orders 
+                WHERE 1=1 
+                ${start_date ? ` AND order_date >= '${start_date}'` : ''}
+                ${end_date ? ` AND order_date <= '${end_date} 23:59:59'` : ''}
+            `);
+
+            res.json({
+                orders: result.rows,
+                statistics: statsResult.rows[0]
+            });
+        } else {
+            let orders = memoryData.orders;
+            
+            if (start_date) {
+                orders = orders.filter(o => new Date(o.order_date) >= new Date(start_date));
+            }
+            
+            if (end_date) {
+                orders = orders.filter(o => new Date(o.order_date) <= new Date(end_date + 'T23:59:59'));
+            }
+            
+            if (status) {
+                orders = orders.filter(o => o.status === status);
+            }
+            
+            const total_revenue = orders.reduce((sum, o) => sum + parseFloat(o.service_price), 0);
+            const confirmed_orders = orders.filter(o => o.status === 'confirmed').length;
+            const pending_orders = orders.filter(o => o.status === 'pending').length;
+            
+            res.json({
+                orders: orders,
+                statistics: {
+                    total_orders: orders.length,
+                    total_revenue,
+                    confirmed_orders,
+                    pending_orders
+                }
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Диагностический маршрут
@@ -482,6 +742,7 @@ app.get('/api/debug', async (req, res) => {
                 settings: memoryData.settings,
                 servicesCount: memoryData.services.length,
                 ordersCount: memoryData.orders.length,
+                paymentMethodsCount: memoryData.payment_methods.length,
                 categoriesCount: memoryData.categories.length
             }
         };
@@ -502,6 +763,9 @@ app.get('/api/debug', async (req, res) => {
 
             const ordersCount = await pool.query('SELECT COUNT(*) FROM orders');
             debugInfo.database.ordersCount = parseInt(ordersCount.rows[0].count);
+
+            const paymentMethodsCount = await pool.query('SELECT COUNT(*) FROM payment_methods');
+            debugInfo.database.paymentMethodsCount = parseInt(paymentMethodsCount.rows[0].count);
         }
 
         res.json(debugInfo);
