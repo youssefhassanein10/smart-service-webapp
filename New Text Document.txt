@@ -1,9 +1,0 @@
-/project-root
-  /public
-    index.html
-    admin.html
-    admin.js
-  package.json
-  server.js
-  init-db.js
-  railway.json (или railway.toml)
