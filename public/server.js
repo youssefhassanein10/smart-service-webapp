@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = 3000;
@@ -12,13 +14,27 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Инициализация SQLite базы
-const db = new sqlite3.Database('./shop.db', (err)=>{
+// Папка для загруженных фото
+const uploadDir = path.join(__dirname, 'public/uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+// Настройка multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) { cb(null, uploadDir); },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const name = Date.now() + ext;
+    cb(null, name);
+  }
+});
+const upload = multer({ storage });
+
+// --- SQLite ---
+const db = new sqlite3.Database('./shop.db', err => {
   if(err) console.error(err);
   else console.log('Connected to SQLite');
 });
 
-// Создаем таблицы, если их нет
 db.serialize(()=>{
   db.run(`CREATE TABLE IF NOT EXISTS store_info(
     id INTEGER PRIMARY KEY,
@@ -52,7 +68,7 @@ db.serialize(()=>{
 });
 
 // --- API ---
-// Получение информации магазина
+// Store info
 app.get('/api/store_info', (req,res)=>{
   db.get(`SELECT * FROM store_info WHERE id=1`, (err,row)=>{
     if(err) return res.status(500).json({error:err});
@@ -60,17 +76,16 @@ app.get('/api/store_info', (req,res)=>{
   });
 });
 
-// Обновление информации магазина
 app.post('/api/store_info', (req,res)=>{
   const {name,inn,address,email,phone} = req.body;
   db.run(`INSERT OR REPLACE INTO store_info(id,name,inn,address,email,phone) VALUES(1,?,?,?,?,?,?)`,
-    [name,inn,address,email,phone], (err)=>{
+    [name,inn,address,email,phone], err=>{
       if(err) return res.status(500).json({error:err});
       res.json({success:true});
-  });
+    });
 });
 
-// Категории
+// Categories
 app.get('/api/categories', (req,res)=>{
   db.all(`SELECT * FROM categories`, (err,rows)=>{
     if(err) return res.status(500).json({error:err});
@@ -80,13 +95,13 @@ app.get('/api/categories', (req,res)=>{
 
 app.post('/api/categories', (req,res)=>{
   const {name} = req.body;
-  db.run(`INSERT INTO categories(name) VALUES(?)`, [name], (err)=>{
+  db.run(`INSERT INTO categories(name) VALUES(?)`, [name], err=>{
     if(err) return res.status(500).json({error:err});
     res.json({success:true});
   });
 });
 
-// Товары
+// Products
 app.get('/api/products', (req,res)=>{
   db.all(`SELECT * FROM products`, (err,rows)=>{
     if(err) return res.status(500).json({error:err});
@@ -94,43 +109,56 @@ app.get('/api/products', (req,res)=>{
   });
 });
 
-app.post('/api/products', (req,res)=>{
-  const {title,description,price,image_url,category_id} = req.body;
+// Добавление товара с фото
+app.post('/api/products', upload.single('image'), (req,res)=>{
+  const {title,description,price,category_id} = req.body;
+  let image_url = '';
+  if(req.file) image_url = '/uploads/' + req.file.filename;
   db.run(`INSERT INTO products(title,description,price,image_url,category_id) VALUES(?,?,?,?,?)`,
-    [title,description,price,image_url,category_id], (err)=>{
+    [title,description,price,image_url,category_id], err=>{
       if(err) return res.status(500).json({error:err});
       res.json({success:true});
     });
 });
 
-app.put('/api/products/:id', (req,res)=>{
-  const {title,description,price,image_url,category_id} = req.body;
+// Редактирование товара с фото
+app.put('/api/products/:id', upload.single('image'), (req,res)=>{
+  const {title,description,price,category_id} = req.body;
   const {id} = req.params;
-  db.run(`UPDATE products SET title=?,description=?,price=?,image_url=?,category_id=? WHERE id=?`,
-    [title,description,price,image_url,category_id,id], (err)=>{
-      if(err) return res.status(500).json({error:err});
-      res.json({success:true});
-    });
+  if(req.file){
+    const image_url = '/uploads/' + req.file.filename;
+    db.run(`UPDATE products SET title=?,description=?,price=?,image_url=?,category_id=? WHERE id=?`,
+      [title,description,price,image_url,category_id,id], err=>{
+        if(err) return res.status(500).json({error:err});
+        res.json({success:true});
+      });
+  } else {
+    db.run(`UPDATE products SET title=?,description=?,price=?,category_id=? WHERE id=?`,
+      [title,description,price,category_id,id], err=>{
+        if(err) return res.status(500).json({error:err});
+        res.json({success:true});
+      });
+  }
 });
 
 app.delete('/api/products/:id', (req,res)=>{
   const {id} = req.params;
-  db.run(`DELETE FROM products WHERE id=?`, [id], (err)=>{
+  db.run(`DELETE FROM products WHERE id=?`, [id], err=>{
     if(err) return res.status(500).json({error:err});
     res.json({success:true});
   });
 });
 
-// Регистрация пользователей
+// Users
 app.post('/api/register', (req,res)=>{
   const {name,email,phone} = req.body;
-  db.run(`INSERT INTO users(name,email,phone) VALUES(?,?,?)`, [name,email,phone], (err)=>{
+  db.run(`INSERT INTO users(name,email,phone) VALUES(?,?,?)`, [name,email,phone], err=>{
     if(err) return res.status(500).json({error:err});
     res.json({success:true});
   });
 });
 
-// Покупка товара (пример, можно расширять)
+// Buy
 app.post('/api/buy', (req,res)=>{
   const {user, productId} = req.body;
   console.log(`User ${user.name} купил товар ${productId}`);
@@ -138,8 +166,6 @@ app.post('/api/buy', (req,res)=>{
 });
 
 // Статика
-app.get('/', (req,res)=>{
-  res.sendFile(path.join(__dirname,'public','shop.html'));
-});
+app.get('/', (req,res)=>res.sendFile(path.join(__dirname,'public','shop.html')));
 
-app.listen(PORT, ()=>console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, ()=>console.log(`Server running: http://localhost:${PORT}`));
