@@ -21,28 +21,28 @@
         .shop-header {
             background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
-            padding: 50px 20px;
+            padding: 40px 20px;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
         .shop-header h1 {
-            font-size: 3em;
+            font-size: 2.5em;
             margin-bottom: 10px;
             font-weight: 300;
         }
         
         .shop-header p {
-            font-size: 1.3em;
+            font-size: 1.2em;
             opacity: 0.9;
         }
         
         .shop-info {
             background: white;
             padding: 25px;
-            margin: 30px auto;
+            margin: 0 auto;
             max-width: 1200px;
-            border-radius: 15px;
+            border-radius: 0 0 15px 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             font-size: 16px;
             line-height: 1.6;
@@ -55,10 +55,28 @@
             padding-bottom: 10px;
         }
         
+        .shop-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .detail-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .detail-item strong {
+            color: #2c3e50;
+        }
+        
         .services-container {
             max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 40px auto;
+            padding: 0 20px;
         }
         
         .services-container h2 {
@@ -184,25 +202,6 @@
             font-size: 1.2em;
         }
         
-        .admin-link {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #e74c3c;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 50px;
-            text-decoration: none;
-            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
-            transition: all 0.3s ease;
-            font-weight: 600;
-        }
-        
-        .admin-link:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
-        }
-        
         @media (max-width: 768px) {
             .shop-header h1 {
                 font-size: 2em;
@@ -213,8 +212,13 @@
             }
             
             .shop-info {
-                margin: 15px;
+                margin: 0 15px;
                 padding: 20px;
+                border-radius: 0 0 10px 10px;
+            }
+            
+            .shop-details-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -225,9 +229,11 @@
         <p>Магазин профессиональных услуг</p>
     </div>
     
-    <div id="shopDetails" class="shop-info">
+    <div class="shop-info">
         <h3>📋 Информация о магазине</h3>
-        <div id="shopDetailsContent">Загрузка информации...</div>
+        <div id="shopDetailsContent" class="shop-details-grid">
+            Загрузка информации...
+        </div>
     </div>
     
     <div class="services-container">
@@ -236,8 +242,6 @@
             Загрузка услуг
         </div>
     </div>
-
-    <a href="/admin" class="admin-link">⚙️ Панель управления</a>
 
     <script>
         // Функция загрузки данных магазина
@@ -256,14 +260,14 @@
                 const shopDetails = document.getElementById('shopDetailsContent');
                 let detailsHTML = '';
                 
-                if (settings.holder_name) detailsHTML += `<p><strong>👤 Держатель:</strong> ${settings.holder_name}</p>`;
-                if (settings.inn) detailsHTML += `<p><strong>🔢 ИНН:</strong> ${settings.inn}</p>`;
-                if (settings.registration_address) detailsHTML += `<p><strong>📝 Адрес регистрации:</strong> ${settings.registration_address}</p>`;
-                if (settings.organization_address) detailsHTML += `<p><strong>🏢 Адрес организации:</strong> ${settings.organization_address}</p>`;
-                if (settings.email) detailsHTML += `<p><strong>📧 Email:</strong> ${settings.email}</p>`;
-                if (settings.phone) detailsHTML += `<p><strong>📞 Телефон:</strong> ${settings.phone}</p>`;
+                if (settings.holder_name) detailsHTML += `<div class="detail-item"><strong>👤 Держатель:</strong> ${settings.holder_name}</div>`;
+                if (settings.inn) detailsHTML += `<div class="detail-item"><strong>🔢 ИНН:</strong> ${settings.inn}</div>`;
+                if (settings.registration_address) detailsHTML += `<div class="detail-item"><strong>📝 Адрес регистрации:</strong> ${settings.registration_address}</div>`;
+                if (settings.organization_address) detailsHTML += `<div class="detail-item"><strong>🏢 Адрес организации:</strong> ${settings.organization_address}</div>`;
+                if (settings.email) detailsHTML += `<div class="detail-item"><strong>📧 Email:</strong> ${settings.email}</div>`;
+                if (settings.phone) detailsHTML += `<div class="detail-item"><strong>📞 Телефон:</strong> ${settings.phone}</div>`;
                 
-                if (!detailsHTML) detailsHTML = '<p>Информация о магазине не заполнена</p>';
+                if (!detailsHTML) detailsHTML = '<div class="detail-item">Информация о магазине не заполнена</div>';
                 shopDetails.innerHTML = detailsHTML;
                 
                 console.log('✅ Настройки магазина загружены');
@@ -275,7 +279,7 @@
                 const servicesContainer = document.getElementById('servicesList');
                 
                 if (services.length === 0) {
-                    servicesContainer.innerHTML = '<div class="empty-state">🎈 Услуги пока не добавлены. Зайдите в панель управления для добавления услуг.</div>';
+                    servicesContainer.innerHTML = '<div class="empty-state">🎈 Услуги пока не добавлены</div>';
                     return;
                 }
                 
@@ -284,7 +288,7 @@
                     <div class="service-grid">
                         ${services.map(service => `
                             <div class="service-card">
-                                ${service.image_url ? `<img src="${service.image_url}" class="service-image" alt="${service.name}">` : ''}
+                                ${service.image_url ? `<img src="${service.image_url}" class="service-image" alt="${service.name}" onerror="this.style.display='none'">` : '<div style="height: 200px; background: #f8f9fa; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #7f8c8d; margin-bottom: 20px;">🖼️ Нет изображения</div>'}
                                 <div class="service-article">#${service.article}</div>
                                 <h3>${service.name}</h3>
                                 ${service.description ? `<div class="service-description">${service.description}</div>` : ''}
@@ -303,7 +307,6 @@
                 document.getElementById('servicesList').innerHTML = `
                     <div class="error">
                         ❌ Ошибка загрузки данных. Пожалуйста, попробуйте позже.
-                        <br><small>${error.message}</small>
                     </div>
                 `;
             }
@@ -311,9 +314,6 @@
         
         // Загружаем данные при старте
         document.addEventListener('DOMContentLoaded', loadShopData);
-        
-        // Обновляем данные каждые 30 секунд
-        setInterval(loadShopData, 30000);
     </script>
 </body>
 </html>
