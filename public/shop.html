@@ -8,16 +8,13 @@
 <body class="bg-light">
 
   <!-- Шапка магазина -->
-  <header class="bg-primary text-white py-3 mb-4">
-    <div class="container text-center">
-      <h1 class="mb-2">Smart Service</h1>
-      <!-- Категории -->
-      <nav>
-        <a href="#" class="btn btn-light btn-sm mx-1">Одежда</a>
-        <a href="#" class="btn btn-light btn-sm mx-1">Обувь</a>
-        <a href="#" class="btn btn-light btn-sm mx-1">Аксессуары</a>
-      </nav>
-    </div>
+  <header class="bg-primary text-white py-3 mb-4 text-center">
+    <h1>Smart Service</h1>
+    <nav>
+      <a href="#" class="btn btn-light btn-sm mx-1">Одежда</a>
+      <a href="#" class="btn btn-light btn-sm mx-1">Обувь</a>
+      <a href="#" class="btn btn-light btn-sm mx-1">Аксессуары</a>
+    </nav>
   </header>
 
   <!-- Основной блок с товарами -->
@@ -28,10 +25,10 @@
   <!-- Footer -->
   <footer class="bg-dark text-white py-4 mt-5">
     <div class="container text-center">
-      <p class="mb-1">Smart Service / ИП Ефимова Анастасия Александровна</p>
-      <p class="mb-1">ИНН: 1234567890</p>
-      <p class="mb-1">Адрес: г. Москва, ул. Примерная, д. 1</p>
-      <p class="mb-1">Email: info@smartservice.ru | Телефон: +7 (999) 123-45-67</p>
+      <p>Smart Service / ИП Ефимова Анастасия Александровна</p>
+      <p>ИНН: 1234567890</p>
+      <p>Адрес: г. Москва, ул. Примерная, д.1</p>
+      <p>Email: info@smartservice.ru | Телефон: +7 (999) 123-45-67</p>
     </div>
   </footer>
 
@@ -65,20 +62,39 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    async function loadStoreInfo() {
+      const res = await fetch('/api/store_info');
+      const store = await res.json();
+
+      // Шапка
+      const headerTitle = document.querySelector('header h1');
+      if(headerTitle) headerTitle.textContent = store.name || 'Smart Service';
+
+      // Футер
+      const footer = document.querySelector('footer .container');
+      if(footer) {
+        footer.innerHTML = `
+          <p class="mb-1">${store.name || 'Smart Service'} / ИП Ефимова Анастасия Александровна</p>
+          <p class="mb-1">ИНН: ${store.inn || '1234567890'}</p>
+          <p class="mb-1">Адрес: ${store.address || 'г. Москва, ул. Примерная, д.1'}</p>
+          <p class="mb-1">Email: ${store.email || 'info@smartservice.ru'} | Телефон: ${store.phone || '+7 (999) 123-45-67'}</p>
+        `;
+      }
+    }
+
     async function loadProducts() {
       const res = await fetch('/api/products');
       const products = await res.json();
       const container = document.getElementById('products');
       container.innerHTML = '';
 
-      if (products.length === 0) {
+      if(products.length === 0){
         container.innerHTML = '<p>Товаров пока нет</p>';
         return;
       }
 
       products.forEach(p => {
         const img = p.image_url ? p.image_url : 'https://via.placeholder.com/300x200?text=Нет+фото';
-
         const card = document.createElement('div');
         card.className = 'col-md-4';
         card.innerHTML = `
@@ -95,25 +111,17 @@
           </div>
         `;
 
-        // Обработка кнопки "Купить"
         card.querySelector('.buy-btn').addEventListener('click', async () => {
           const userData = JSON.parse(localStorage.getItem('userData'));
-          if (!userData) {
+          if(!userData){
             alert('Пожалуйста, зарегистрируйтесь!');
             return;
           }
-
-          const order = {
-            user: userData,
-            productId: p.id
-          };
-
           await fetch('/api/buy', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(order)
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({user:userData, productId:p.id})
           });
-
           alert(`Товар "${p.title}" добавлен в корзину!`);
         });
 
@@ -121,15 +129,16 @@
       });
     }
 
-    loadProducts();
-
-    // Проверка регистрации
     document.addEventListener('DOMContentLoaded', () => {
-      if (!localStorage.getItem('userRegistered')) {
+      loadStoreInfo();
+      loadProducts();
+
+      // Регистрация
+      if(!localStorage.getItem('userRegistered')){
         const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
         registerModal.show();
 
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        document.getElementById('registerForm').addEventListener('submit', async (e)=>{
           e.preventDefault();
           const form = e.target;
           const data = {
@@ -137,21 +146,15 @@
             email: form.email.value,
             phone: form.phone.value
           };
-
-          // Отправка на сервер
           await fetch('/api/register', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(data)
           });
-
-          localStorage.setItem('userRegistered', 'true');
+          localStorage.setItem('userRegistered','true');
           localStorage.setItem('userData', JSON.stringify(data));
           registerModal.hide();
         });
-      } else {
-        const storedData = JSON.parse(localStorage.getItem('userData'));
-        if (!storedData) localStorage.removeItem('userRegistered'); // перезапуск регистрации при проблемах
       }
     });
   </script>
