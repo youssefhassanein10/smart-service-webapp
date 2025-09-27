@@ -2,99 +2,51 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>🛍️ Наш магазин</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- Bootstrap -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Магазин</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { background: #f8f9fa; }
-    .card img { object-fit: cover; height: 200px; }
-  </style>
 </head>
-<body>
+<body class="bg-light">
   <div class="container py-4">
-    <h2 class="text-center mb-4">🛍️ Наш магазин</h2>
+    <h1 class="mb-4 text-center">🛍 Наш магазин</h1>
     <div id="products" class="row g-4"></div>
   </div>
 
-  <!-- Модалка выбора оплаты -->
-  <div class="modal fade" id="payModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Выберите способ оплаты</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div id="paymentMethods" class="list-group"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
   <script>
     const productsEl = document.getElementById('products');
-    const paymentMethodsEl = document.getElementById('paymentMethods');
-    let selectedProduct = null;
 
-    // Загружаем товары
     async function loadProducts() {
-      const res = await fetch('/api/products');
-      const products = await res.json();
+      try {
+        const res = await fetch('/api/products');
+        const products = await res.json();
+        console.log("Products from API:", products); // для отладки
 
-      if (products.length === 0) {
-        productsEl.innerHTML = `<p class="text-center text-muted">Товары пока не добавлены.</p>`;
-        return;
-      }
+        if (!products.length) {
+          productsEl.innerHTML = `<p class="text-center text-muted">Пока нет товаров 😢</p>`;
+          return;
+        }
 
-      productsEl.innerHTML = products.map(p => `
-        <div class="col-md-4">
-          <div class="card shadow-sm">
-            <img src="${p.image_url || 'https://via.placeholder.com/300'}" class="card-img-top">
-            <div class="card-body">
-              <h5 class="card-title">${p.title}</h5>
-              <p class="card-text">💰 ${p.price} ₽</p>
-              <button class="btn btn-primary w-100" onclick="buy('${p.id}')">Купить</button>
+        productsEl.innerHTML = products.map(p => `
+          <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+              <img src="${p.image_url ? window.location.origin + p.image_url : 'https://via.placeholder.com/300'}" class="card-img-top" style="object-fit:cover;height:200px;">
+              <div class="card-body d-flex flex-column">
+                <h5 class="card-title">${p.title}</h5>
+                <p class="card-text flex-grow-1">💰 ${p.price} ₽</p>
+                <button class="btn btn-primary w-100 mt-auto" onclick="buy('${p.id}')">Купить</button>
+              </div>
             </div>
           </div>
-        </div>
-      `).join('');
+        `).join('');
+      } catch (e) {
+        console.error("Ошибка загрузки товаров:", e);
+        productsEl.innerHTML = `<p class="text-center text-danger">Ошибка загрузки товаров</p>`;
+      }
     }
 
-    // Нажали «Купить»
-    async function buy(productId) {
-      selectedProduct = productId;
-      const res = await fetch('/api/payments');
-      const methods = await res.json();
-
-      paymentMethodsEl.innerHTML = methods.filter(m => m.enabled).map(m => `
-        <button class="list-group-item list-group-item-action" onclick="pay('${m.id}')">
-          ${m.name}
-        </button>
-      `).join('');
-
-      const modal = new bootstrap.Modal(document.getElementById('payModal'));
-      modal.show();
-    }
-
-    // Подтверждение оплаты
-    async function pay(paymentId) {
-      await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product_id: selectedProduct,
-          amount: 1,
-          payment_method_id: paymentId,
-          customer_contact: "telegram_user"
-        })
-      });
-      alert("✅ Заказ создан! Администратор свяжется с вами.");
-      bootstrap.Modal.getInstance(document.getElementById('payModal')).hide();
+    function buy(id) {
+      alert("Покупка товара ID: " + id);
+      // тут потом можно добавить оплату через Telegram или Stripe
     }
 
     loadProducts();
