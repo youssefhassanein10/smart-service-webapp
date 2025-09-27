@@ -47,9 +47,6 @@ app.post('/api/categories', checkAdmin, (req, res) => {
     res.json({ id: this.lastID, name: req.body.name });
   });
 });
-app.delete('/api/categories/:id', checkAdmin, (req, res) => {
-  db.run(`DELETE FROM categories WHERE id=?`, [req.params.id], () => res.json({ success:true }));
-});
 
 // --- API товаров ---
 app.get('/api/products', (req, res) => {
@@ -62,24 +59,6 @@ app.post('/api/products', checkAdmin, upload.single('image'), (req, res) => {
     [title, description, price, category_id, image_url], function() {
       res.json({ id: this.lastID });
     });
-});
-app.put('/api/products/:id', checkAdmin, upload.single('image'), (req, res) => {
-  const { title, description, price, category_id } = req.body;
-  const image_url = req.file ? '/uploads/' + req.file.filename : undefined;
-
-  let query = 'UPDATE products SET title=?, description=?, price=?, category_id=?';
-  const params = [title, description, price, category_id];
-  if (image_url) {
-    query += ', image_url=?';
-    params.push(image_url);
-  }
-  query += ' WHERE id=?';
-  params.push(req.params.id);
-
-  db.run(query, params, () => res.json({ success:true }));
-});
-app.delete('/api/products/:id', checkAdmin, (req, res) => {
-  db.run(`DELETE FROM products WHERE id=?`, [req.params.id], () => res.json({ success:true }));
 });
 
 // --- API информации о магазине ---
