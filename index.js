@@ -8,32 +8,40 @@ const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Парсинг POST-запросов
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Статические файлы
+// Статические файлы (HTML, JS, CSS)
 app.use(express.static(path.join(__dirname)));
 
-// Создаем папку uploads, если её нет
+// Создаём папку uploads только если её нет
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Настройка multer для загрузки файлов
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
 });
 const upload = multer({ storage });
 
-// База данных SQLite
+// Создаём базу данных SQLite
 const db = new sqlite3.Database(path.join(__dirname, 'database.db'));
 
-// Создание таблиц
+// Создание таблиц, если их нет
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT
   )`);
+
   db.run(`CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
@@ -44,7 +52,7 @@ db.serialize(() => {
   )`);
 });
 
-// Роуты
+// Роут для добавления категории
 app.post('/add-category', (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).send('Название категории обязательно');
@@ -54,6 +62,7 @@ app.post('/add-category', (req, res) => {
   });
 });
 
+// Роут для добавления товара
 app.post('/add-product', upload.single('image'), (req, res) => {
   const { name, price, category_id } = req.body;
   const image = req.file ? '/uploads/' + req.file.filename : null;
@@ -67,14 +76,27 @@ app.post('/add-product', upload.single('image'), (req, res) => {
   );
 });
 
+// Роут для получения категорий
 app.get('/categories', (req, res) => {
-  db.all('SELECT * FROM categories', (err, rows) => err ? res.status(500).send(err.message) : res.json(rows));
+  db.all('SELECT * FROM categories', (err, rows) => {
+    if (err) return res.status(500).send(err.message);
+    res.json(rows);
+  });
 });
 
+// Роут для получения товаров
 app.get('/products', (req, res) => {
-  db.all('SELECT * FROM products', (err, rows) => err ? res.status(500).send(err.message) : res.json(rows));
+  db.all('SELECT * FROM products', (err, rows) => {
+    if (err) return res.status(500).send(err.message);
+    res.json(rows);
+  });
 });
 
-app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+// Отдача admin.html
+app.get('/admin.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
