@@ -16,20 +16,27 @@
       <button class="btn btn-primary" onclick="login()">Войти</button>
     </div>
 
-    <!-- Форма добавления товара -->
-    <div id="adminPanel" class="card p-4" style="display:none;">
-      <h4>Добавить новый товар</h4>
-      <form id="productForm">
-        <input type="text" id="title" class="form-control mb-3" placeholder="Название" required>
-        <textarea id="description" class="form-control mb-3" placeholder="Описание"></textarea>
-        <input type="number" id="price" class="form-control mb-3" placeholder="Цена" required>
-        <input type="text" id="sku" class="form-control mb-3" placeholder="Артикул">
-        
-        <label class="form-label">Фото товара:</label>
-        <input type="file" id="image" class="form-control mb-3" accept="image/*">
-        
-        <button type="submit" class="btn btn-success">Добавить товар</button>
-      </form>
+    <!-- Панель администратора -->
+    <div id="adminPanel" style="display:none;">
+      <!-- Форма добавления товара -->
+      <div class="card p-4 mb-4">
+        <h4>Добавить новый товар</h4>
+        <form id="productForm">
+          <input type="text" id="title" class="form-control mb-3" placeholder="Название" required>
+          <textarea id="description" class="form-control mb-3" placeholder="Описание"></textarea>
+          <input type="number" id="price" class="form-control mb-3" placeholder="Цена" required>
+          <input type="text" id="sku" class="form-control mb-3" placeholder="Артикул">
+          <label class="form-label">Фото товара:</label>
+          <input type="file" id="image" class="form-control mb-3" accept="image/*">
+          <button type="submit" class="btn btn-success">Добавить товар</button>
+        </form>
+      </div>
+
+      <!-- Список товаров -->
+      <div class="card p-4">
+        <h4>Все товары</h4>
+        <div id="productList" class="row"></div>
+      </div>
     </div>
   </div>
 
@@ -45,11 +52,12 @@
       adminPass = pass;
       document.getElementById("loginForm").style.display = "none";
       document.getElementById("adminPanel").style.display = "block";
+      loadProducts();
     }
 
+    // Добавление товара
     document.getElementById("productForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const title = document.getElementById("title").value;
       const description = document.getElementById("description").value;
       const price = document.getElementById("price").value;
@@ -60,32 +68,82 @@
       if (imageFile) {
         const formData = new FormData();
         formData.append("image", imageFile);
-
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData
-        });
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
         const uploadData = await uploadRes.json();
         imageUrl = uploadData.url;
       }
 
       const res = await fetch("/api/products", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-pass": adminPass
-        },
+        headers: { "Content-Type": "application/json", "x-admin-pass": adminPass },
         body: JSON.stringify({ title, description, price, sku, image_url: imageUrl })
       });
 
       if (res.ok) {
         alert("Товар успешно добавлен!");
         document.getElementById("productForm").reset();
+        loadProducts();
       } else {
         const err = await res.json();
         alert("Ошибка: " + err.error);
       }
     });
+
+    // Загрузка всех товаров
+    async function loadProducts() {
+      const res = await fetch("/api/products");
+      const products = await res.json();
+      const list = document.getElementById("productList");
+      list.innerHTML = "";
+
+      products.forEach(p => {
+        const col = document.createElement("div");
+        col.className = "col-md-4 mb-3";
+        col.innerHTML = `
+          <div class="card h-100">
+            <img src="${p.image_url || 'https://via.placeholder.com/300x200'}" class="card-img-top" alt="${p.title}">
+            <div class="card-body">
+              <h5 class="card-title">${p.title}</h5>
+              <p class="card-text">Цена: ${p.price} ₽</p>
+              <p class="card-text"><small class="text-muted">Артикул: ${p.sku || '-'}</small></p>
+              <button class="btn btn-warning btn-sm me-2" onclick="editProduct('${p.id}')">Редактировать</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">Удалить</button>
+            </div>
+          </div>
+        `;
+        list.appendChild(col);
+      });
+    }
+
+    // Удаление товара
+    async function deleteProduct(id) {
+      if (!confirm("Удалить этот товар?")) return;
+      const res = await fetch("/api/products/" + id, {
+        method: "DELETE",
+        headers: { "x-admin-pass": adminPass }
+      });
+      if (res.ok) {
+        loadProducts();
+      } else {
+        alert("Ошибка при удалении");
+      }
+    }
+
+    // Редактирование товара
+    async function editProduct(id) {
+      const newTitle = prompt("Введите новое название:");
+      if (!newTitle) return;
+      const res = await fetch("/api/products/" + id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-pass": adminPass },
+        body: JSON.stringify({ title: newTitle })
+      });
+      if (res.ok) {
+        loadProducts();
+      } else {
+        alert("Ошибка при редактировании");
+      }
+    }
   </script>
 </body>
 </html>
