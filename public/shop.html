@@ -10,10 +10,8 @@
   <!-- Шапка магазина -->
   <header class="bg-primary text-white py-3 mb-4 text-center">
     <h1>Smart Service</h1>
-    <nav>
-      <a href="#" class="btn btn-light btn-sm mx-1">Одежда</a>
-      <a href="#" class="btn btn-light btn-sm mx-1">Обувь</a>
-      <a href="#" class="btn btn-light btn-sm mx-1">Аксессуары</a>
+    <nav id="categoryNav" class="mt-2">
+      <!-- Категории подгрузятся через JS -->
     </nav>
   </header>
 
@@ -62,6 +60,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    let allProducts = []; // Все товары для фильтрации
+    let selectedCategory = null;
+
     async function loadStoreInfo() {
       const res = await fetch('/api/store_info');
       const store = await res.json();
@@ -82,18 +83,46 @@
       }
     }
 
+    async function loadCategories() {
+      const res = await fetch('/api/categories');
+      const categories = await res.json();
+      const nav = document.getElementById('categoryNav');
+      nav.innerHTML = '';
+
+      // "Все" категория
+      const allBtn = document.createElement('button');
+      allBtn.className = 'btn btn-light btn-sm mx-1';
+      allBtn.textContent = 'Все';
+      allBtn.onclick = () => { selectedCategory = null; renderProducts(); };
+      nav.appendChild(allBtn);
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-light btn-sm mx-1';
+        btn.textContent = cat.name;
+        btn.onclick = () => { selectedCategory = cat.id; renderProducts(); };
+        nav.appendChild(btn);
+      });
+    }
+
     async function loadProducts() {
       const res = await fetch('/api/products');
-      const products = await res.json();
+      allProducts = await res.json();
+      renderProducts();
+    }
+
+    function renderProducts() {
       const container = document.getElementById('products');
       container.innerHTML = '';
 
-      if(products.length === 0){
+      let productsToShow = selectedCategory ? allProducts.filter(p => p.category_id == selectedCategory) : allProducts;
+
+      if(productsToShow.length === 0){
         container.innerHTML = '<p>Товаров пока нет</p>';
         return;
       }
 
-      products.forEach(p => {
+      productsToShow.forEach(p => {
         const img = p.image_url ? p.image_url : 'https://via.placeholder.com/300x200?text=Нет+фото';
         const card = document.createElement('div');
         card.className = 'col-md-4';
@@ -131,6 +160,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       loadStoreInfo();
+      loadCategories();
       loadProducts();
 
       // Регистрация
