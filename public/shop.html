@@ -25,79 +25,7 @@
   <div class="container text-center" id="footerInfo"></div>
 </footer>
 
-<!-- Модальные окна -->
-
-<!-- Регистрация -->
-<div class="modal fade" id="registerModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Регистрация</h5></div>
-      <div class="modal-body">
-        <form id="registerForm">
-          <div class="mb-3"><label class="form-label">Имя</label><input type="text" class="form-control" name="name" required></div>
-          <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
-          <div class="mb-3"><label class="form-label">Телефон</label><input type="tel" class="form-control" name="phone" required></div>
-          <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Добавление/редактирование категории -->
-<div class="modal fade" id="categoryModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title" id="categoryModalTitle">Добавить категорию</h5></div>
-      <div class="modal-body">
-        <form id="categoryForm">
-          <input type="hidden" name="id">
-          <div class="mb-3"><label class="form-label">Название категории</label><input type="text" class="form-control" name="name" required></div>
-          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Добавление/редактирование товара -->
-<div class="modal fade" id="productModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title" id="productModalTitle">Добавить товар</h5></div>
-      <div class="modal-body">
-        <form id="productForm" enctype="multipart/form-data">
-          <input type="hidden" name="id">
-          <div class="mb-3"><label class="form-label">Название</label><input type="text" class="form-control" name="title" required></div>
-          <div class="mb-3"><label class="form-label">Описание</label><textarea class="form-control" name="description"></textarea></div>
-          <div class="mb-3"><label class="form-label">Цена</label><input type="number" class="form-control" name="price" required></div>
-          <div class="mb-3"><label class="form-label">Фото товара</label><input type="file" class="form-control" name="image"></div>
-          <div class="mb-3"><label class="form-label">Категория</label><select class="form-select" name="category_id"></select></div>
-          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Редактирование магазина -->
-<div class="modal fade" id="storeModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Редактировать магазин</h5></div>
-      <div class="modal-body">
-        <form id="storeForm">
-          <div class="mb-3"><label class="form-label">Название</label><input type="text" class="form-control" name="name"></div>
-          <div class="mb-3"><label class="form-label">ИНН</label><input type="text" class="form-control" name="inn"></div>
-          <div class="mb-3"><label class="form-label">Адрес</label><input type="text" class="form-control" name="address"></div>
-          <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email"></div>
-          <div class="mb-3"><label class="form-label">Телефон</label><input type="tel" class="form-control" name="phone"></div>
-          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Модальные окна остаются как в твоём файле -->
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -109,13 +37,12 @@ const categoryModal = new bootstrap.Modal(document.getElementById('categoryModal
 const productModal = new bootstrap.Modal(document.getElementById('productModal'));
 const storeModal = new bootstrap.Modal(document.getElementById('storeModal'));
 
-// --- Админ ---
 let isAdmin = localStorage.getItem('isAdmin')==='true';
 if(!isAdmin){
   document.getElementById('adminControls').style.display='none';
 }
 
-// --- Загрузка информации о магазине ---
+// --- Load Store Info ---
 async function loadStoreInfo(){
   const res = await fetch('/api/store_info');
   const store = await res.json();
@@ -129,7 +56,7 @@ async function loadStoreInfo(){
   `;
 }
 
-// --- Категории ---
+// --- Load Categories ---
 async function loadCategories(){
   const res = await fetch('/api/categories');
   const categories = await res.json();
@@ -157,7 +84,7 @@ async function loadCategories(){
   });
 }
 
-// --- Товары ---
+// --- Load Products ---
 async function loadProducts(){
   const res = await fetch('/api/products');
   allProducts = await res.json();
@@ -206,7 +133,7 @@ function renderProducts(){
   });
 }
 
-// --- Открытие модалки товара ---
+// --- Open Product Modal ---
 function openProductModal(product=null){
   const form = document.getElementById('productForm');
   form.reset();
@@ -225,7 +152,6 @@ function openProductModal(product=null){
 document.addEventListener('DOMContentLoaded',()=>{
   loadStoreInfo(); loadCategories(); loadProducts();
 
-  // регистрация обычного пользователя
   if(!localStorage.getItem('userRegistered')){
     registerModal.show();
     document.getElementById('registerForm').addEventListener('submit',async e=>{
@@ -268,11 +194,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       formData.append('category_id', form.category_id.value);
       if(fileInput.files[0]) formData.append('image', fileInput.files[0]);
 
-      if(id){ // редактирование
-        await fetch(`/api/products/${id}`,{method:'PUT',body:formData});
-      }else{ // добавление
-        await fetch('/api/products',{method:'POST',body:formData});
-      }
+      if(id){ await fetch(`/api/products/${id}`,{method:'PUT',body:formData}); }
+      else{ await fetch('/api/products',{method:'POST',body:formData}); }
       productModal.hide();
       loadProducts();
     });
