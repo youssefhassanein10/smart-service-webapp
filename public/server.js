@@ -9,15 +9,17 @@ const fs = require('fs');
 const app = express();
 const PORT = 3000;
 
+// Секретный токен для администратора
+const ADMIN_TOKEN = 'SUPER_SECRET_TOKEN';
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Папка для загруженных фото
+// Папка для фото
 const uploadDir = path.join(__dirname, 'public/uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// Настройка multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
@@ -37,8 +39,14 @@ db.serialize(()=>{
   db.run(`CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, phone TEXT)`);
 });
 
-// --- API ---
-// Store info
+// --- Проверка администратора ---
+app.get('/api/is_admin', (req,res)=>{
+  const token = req.headers['x-admin-token'];
+  if(token===ADMIN_TOKEN) res.json({admin:true});
+  else res.json({admin:false});
+});
+
+// --- Store info ---
 app.get('/api/store_info', (req,res)=>{
   db.get(`SELECT * FROM store_info WHERE id=1`, (err,row)=>{
     if(err) return res.status(500).json({error:err});
@@ -47,6 +55,8 @@ app.get('/api/store_info', (req,res)=>{
 });
 
 app.post('/api/store_info', (req,res)=>{
+  const token = req.headers['x-admin-token'];
+  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
   const {name,inn,address,email,phone} = req.body;
   db.run(`INSERT OR REPLACE INTO store_info(id,name,inn,address,email,phone) VALUES(1,?,?,?,?,?)`,
     [name,inn,address,email,phone], err=>{
@@ -55,7 +65,7 @@ app.post('/api/store_info', (req,res)=>{
     });
 });
 
-// Categories
+// --- Categories ---
 app.get('/api/categories', (req,res)=>{
   db.all(`SELECT * FROM categories`, (err,rows)=>{
     if(err) return res.status(500).json({error:err});
@@ -64,6 +74,8 @@ app.get('/api/categories', (req,res)=>{
 });
 
 app.post('/api/categories', (req,res)=>{
+  const token = req.headers['x-admin-token'];
+  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
   const {name} = req.body;
   db.run(`INSERT INTO categories(name) VALUES(?)`, [name], err=>{
     if(err) return res.status(500).json({error:err});
@@ -71,7 +83,7 @@ app.post('/api/categories', (req,res)=>{
   });
 });
 
-// Products
+// --- Products ---
 app.get('/api/products', (req,res)=>{
   db.all(`SELECT * FROM products`, (err,rows)=>{
     if(err) return res.status(500).json({error:err});
@@ -80,6 +92,8 @@ app.get('/api/products', (req,res)=>{
 });
 
 app.post('/api/products', upload.single('image'), (req,res)=>{
+  const token = req.headers['x-admin-token'];
+  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
   const {title,description,price,category_id} = req.body;
   let image_url = '';
   if(req.file) image_url = '/uploads/' + req.file.filename;
@@ -91,6 +105,8 @@ app.post('/api/products', upload.single('image'), (req,res)=>{
 });
 
 app.put('/api/products/:id', upload.single('image'), (req,res)=>{
+  const token = req.headers['x-admin-token'];
+  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
   const {title,description,price,category_id} = req.body;
   const {id} = req.params;
   if(req.file){
@@ -110,6 +126,8 @@ app.put('/api/products/:id', upload.single('image'), (req,res)=>{
 });
 
 app.delete('/api/products/:id', (req,res)=>{
+  const token = req.headers['x-admin-token'];
+  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
   const {id} = req.params;
   db.run(`DELETE FROM products WHERE id=?`, [id], err=>{
     if(err) return res.status(500).json({error:err});
@@ -117,7 +135,7 @@ app.delete('/api/products/:id', (req,res)=>{
   });
 });
 
-// Users
+// --- Users ---
 app.post('/api/register', (req,res)=>{
   const {name,email,phone} = req.body;
   db.run(`INSERT INTO users(name,email,phone) VALUES(?,?,?)`, [name,email,phone], err=>{
@@ -126,7 +144,7 @@ app.post('/api/register', (req,res)=>{
   });
 });
 
-// Buy
+// --- Buy ---
 app.post('/api/buy', (req,res)=>{
   const {user, productId} = req.body;
   console.log(`User ${user.name} купил товар ${productId}`);
