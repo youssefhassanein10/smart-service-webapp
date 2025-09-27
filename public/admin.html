@@ -183,6 +183,10 @@
             background: linear-gradient(135deg, #f39c12, #e67e22);
         }
         
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+        }
+        
         .image-preview {
             margin-top: 15px;
             text-align: center;
@@ -236,7 +240,7 @@
         
         .order-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
             padding-bottom: 10px;
@@ -276,6 +280,12 @@
         
         .order-detail {
             margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .order-detail strong {
+            color: #2c3e50;
         }
         
         .order-actions {
@@ -352,6 +362,129 @@
             font-size: 1.1em;
         }
         
+        .payment-methods-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .payment-method-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.3s ease;
+        }
+        
+        .payment-method-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .payment-method-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .payment-method-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+        
+        .payment-method-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .payment-method-details {
+            margin-bottom: 15px;
+        }
+        
+        .payment-method-instructions {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin-bottom: 15px;
+        }
+        
+        .payment-method-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .payment-method-actions button {
+            flex: 1;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        
+        .reports-filters {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .reports-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .reports-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .reports-table th,
+        .reports-table td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .reports-table th {
+            background: #34495e;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .reports-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .reports-table tr:hover {
+            background: #e9ecef;
+        }
+        
+        .manual-order-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
         @media (max-width: 768px) {
             .tabs {
                 flex-direction: column;
@@ -377,6 +510,19 @@
             .order-actions {
                 flex-direction: column;
             }
+            
+            .payment-methods-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .reports-table {
+                font-size: 14px;
+            }
+            
+            .reports-table th,
+            .reports-table td {
+                padding: 8px;
+            }
         }
     </style>
 </head>
@@ -384,14 +530,15 @@
     <div class="container">
         <header>
             <h1>⚙️ Панель управления Smart Service</h1>
-            <p>Управление настройками магазина, услугами и заказами</p>
+            <p>Управление настройками магазина, услугами, заказами и отчетами</p>
         </header>
         
         <div class="tabs">
             <button class="tab-button active" onclick="openTab('shop-settings')">🏪 Настройки магазина</button>
-            <button class="tab-button" onclick="openTab('services')">🔧 Управление услугами</button>
+            <button class="tab-button" onclick="openTab('services')">🔧 Услуги</button>
+            <button class="tab-button" onclick="openTab('payment-methods')">💳 Способы оплаты</button>
             <button class="tab-button" onclick="openTab('orders')">📦 Заказы</button>
-            <button class="tab-button" onclick="openTab('categories')">📁 Категории</button>
+            <button class="tab-button" onclick="openTab('reports')">📊 Отчеты</button>
             <button class="tab-button" onclick="openTab('diagnostics')">🔍 Диагностика</button>
         </div>
         
@@ -499,6 +646,62 @@
             </div>
         </div>
         
+        <div id="payment-methods" class="tab-content">
+            <h2>💳 Управление способами оплаты</h2>
+            
+            <button class="btn-success" onclick="showAddPaymentMethodForm()">➕ Добавить способ оплаты</button>
+            
+            <div id="addPaymentMethodForm" class="manual-order-form" style="display: none; margin-top: 20px;">
+                <h3>Добавить новый способ оплаты</h3>
+                <form id="paymentMethodForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>ID способа оплаты (латинскими буквами):</label>
+                            <input type="text" name="method_id" placeholder="sberbank" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Название способа оплаты:</label>
+                            <input type="text" name="name" placeholder="Сбербанк" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Иконка (эмодзи):</label>
+                            <input type="text" name="icon" placeholder="🏦" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Порядок сортировки:</label>
+                            <input type="number" name="sort_order" value="0" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Описание:</label>
+                        <input type="text" name="details" placeholder="Перевод по номеру карты/телефона">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Инструкции по оплате:</label>
+                        <textarea name="instructions" placeholder="Подробные инструкции для клиента"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="is_active" checked> Активный способ оплаты
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn-success">💾 Сохранить способ оплаты</button>
+                    <button type="button" class="btn-secondary" onclick="hideAddPaymentMethodForm()">❌ Отмена</button>
+                </form>
+            </div>
+            
+            <div id="paymentMethodsContainer" class="payment-methods-grid">
+                <!-- Способы оплаты будут загружены здесь -->
+            </div>
+        </div>
+        
         <div id="orders" class="tab-content">
             <h2>📦 Управление заказами</h2>
             
@@ -526,9 +729,94 @@
             </div>
         </div>
         
-        <div id="categories" class="tab-content">
-            <h2>Управление категориями</h2>
-            <p>🚧 Функционал управления категориями будет добавлен в следующем обновлении.</p>
+        <div id="reports" class="tab-content">
+            <h2>📊 Отчеты по заказам</h2>
+            
+            <div class="reports-filters">
+                <h3>Фильтры отчета</h3>
+                <div class="filters-grid">
+                    <div class="form-group">
+                        <label>Дата с:</label>
+                        <input type="date" id="reportStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Дата по:</label>
+                        <input type="date" id="reportEndDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Статус заказа:</label>
+                        <select id="reportStatus">
+                            <option value="">Все статусы</option>
+                            <option value="pending">Ожидание</option>
+                            <option value="confirmed">Подтвержден</option>
+                            <option value="cancelled">Отменен</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="loadReports()">🔍 Применить фильтры</button>
+            </div>
+            
+            <div class="reports-actions">
+                <button class="btn-success" onclick="showManualOrderForm()">➕ Добавить заказ вручную</button>
+                <button class="btn-info" onclick="exportToCSV()">📁 Экспорт в CSV</button>
+                <button class="btn-warning" onclick="printReport()">🖨️ Печать отчета</button>
+            </div>
+            
+            <div id="manualOrderForm" class="manual-order-form" style="display: none;">
+                <h3>📝 Добавление заказа вручную</h3>
+                <form id="manualOrderForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Название услуги:</label>
+                            <input type="text" id="manualServiceName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Артикул услуги:</label>
+                            <input type="text" id="manualServiceArticle">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Сумма (руб.):</label>
+                            <input type="number" id="manualServicePrice" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Способ оплаты:</label>
+                            <select id="manualPaymentMethod" required>
+                                <option value="">Выберите способ оплаты</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Имя покупателя:</label>
+                            <input type="text" id="manualCustomerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Контакт покупателя:</label>
+                            <input type="text" id="manualCustomerContact" placeholder="Telegram, email или телефон">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Дата и время заказа:</label>
+                        <input type="datetime-local" id="manualOrderDate">
+                    </div>
+                    
+                    <button type="submit" class="btn-success">💾 Добавить заказ</button>
+                    <button type="button" class="btn-secondary" onclick="hideManualOrderForm()">❌ Отмена</button>
+                </form>
+            </div>
+            
+            <div id="reportsStatistics" class="stats-grid">
+                <!-- Статистика будет загружена здесь -->
+            </div>
+            
+            <div id="reportsContainer">
+                <!-- Отчет будет загружен здесь -->
+            </div>
         </div>
         
         <div id="diagnostics" class="tab-content">
@@ -606,16 +894,34 @@
                 container.innerHTML = orders.map(order => `
                     <div class="order-card">
                         <div class="order-header">
-                            <span class="order-id">Заказ #${order.id}</span>
+                            <span class="order-id">Заказ #${order.id} ${order.is_manual ? '(ручной)' : ''}</span>
                             <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                         </div>
                         <div class="order-details">
-                            <div class="order-detail"><strong>Услуга:</strong> ${order.service_name}</div>
-                            <div class="order-detail"><strong>Стоимость:</strong> ${order.service_price} руб.</div>
-                            <div class="order-detail"><strong>Клиент:</strong> ${order.customer_name}</div>
-                            <div class="order-detail"><strong>Контакт:</strong> ${order.customer_contact}</div>
-                            <div class="order-detail"><strong>Способ оплаты:</strong> ${order.payment_method}</div>
-                            <div class="order-detail"><strong>Дата:</strong> ${new Date(order.created_at).toLocaleString()}</div>
+                            <div class="order-detail">
+                                <strong>Услуга:</strong> 
+                                <span>${order.service_name} ${order.service_article ? `(${order.service_article})` : ''}</span>
+                            </div>
+                            <div class="order-detail">
+                                <strong>Стоимость:</strong> 
+                                <span>${order.service_price} руб.</span>
+                            </div>
+                            <div class="order-detail">
+                                <strong>Клиент:</strong> 
+                                <span>${order.customer_name}</span>
+                            </div>
+                            <div class="order-detail">
+                                <strong>Контакт:</strong> 
+                                <span>${order.customer_contact || 'Не указан'}</span>
+                            </div>
+                            <div class="order-detail">
+                                <strong>Способ оплаты:</strong> 
+                                <span>${order.payment_method}</span>
+                            </div>
+                            <div class="order-detail">
+                                <strong>Дата:</strong> 
+                                <span>${new Date(order.order_date).toLocaleString()}</span>
+                            </div>
                         </div>
                         <div class="order-actions">
                             ${order.status === 'pending' ? `
@@ -623,11 +929,139 @@
                                 <button class="btn-danger" onclick="updateOrderStatus(${order.id}, 'cancelled')">❌ Отменить</button>
                             ` : ''}
                             <button class="btn-warning" onclick="contactCustomer('${order.customer_contact}')">📞 Связаться</button>
+                            <button class="btn-danger" onclick="deleteOrder(${order.id})">🗑️ Удалить</button>
                         </div>
                     </div>
                 `).join('');
             } catch (error) {
                 console.error('Ошибка загрузки заказов:', error);
+            }
+        }
+        
+        // Функция для загрузки способов оплаты
+        async function loadPaymentMethods() {
+            try {
+                const response = await fetch('/api/admin/payment-methods');
+                const methods = await response.json();
+                
+                const container = document.getElementById('paymentMethodsContainer');
+                
+                if (methods.length === 0) {
+                    container.innerHTML = '<p>Способы оплаты не настроены</p>';
+                    return;
+                }
+                
+                container.innerHTML = methods.map(method => `
+                    <div class="payment-method-card">
+                        <div class="payment-method-header">
+                            <div class="payment-method-icon">${method.icon}</div>
+                            <div class="payment-method-name">${method.name}</div>
+                        </div>
+                        <div class="payment-method-details">
+                            <p><strong>ID:</strong> ${method.method_id}</p>
+                            <p><strong>Описание:</strong> ${method.details}</p>
+                            <p><strong>Статус:</strong> ${method.is_active ? '✅ Активен' : '❌ Неактивен'}</p>
+                            <p><strong>Порядок:</strong> ${method.sort_order}</p>
+                        </div>
+                        <div class="payment-method-instructions">${method.instructions}</div>
+                        <div class="payment-method-actions">
+                            <button class="btn-warning" onclick="editPaymentMethod('${method.method_id}')">✏️ Редактировать</button>
+                            <button class="btn-danger" onclick="deletePaymentMethod('${method.method_id}')">🗑️ Удалить</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Также обновляем выпадающий список в форме ручного заказа
+                const select = document.getElementById('manualPaymentMethod');
+                select.innerHTML = '<option value="">Выберите способ оплаты</option>' +
+                    methods.filter(m => m.is_active).map(m => 
+                        `<option value="${m.name}">${m.icon} ${m.name}</option>`
+                    ).join('');
+            } catch (error) {
+                console.error('Ошибка загрузки способов оплаты:', error);
+            }
+        }
+        
+        // Функция для загрузки отчетов
+        async function loadReports() {
+            try {
+                const startDate = document.getElementById('reportStartDate').value;
+                const endDate = document.getElementById('reportEndDate').value;
+                const status = document.getElementById('reportStatus').value;
+                
+                let url = '/api/reports?';
+                if (startDate) url += `start_date=${startDate}&`;
+                if (endDate) url += `end_date=${endDate}&`;
+                if (status) url += `status=${status}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                // Обновляем статистику
+                const statsContainer = document.getElementById('reportsStatistics');
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-number">${data.statistics.total_orders}</div>
+                        <div class="stat-label">Всего заказов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.statistics.confirmed_orders}</div>
+                        <div class="stat-label">Подтверждено</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.statistics.pending_orders}</div>
+                        <div class="stat-label">Ожидание</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.statistics.total_revenue || 0} руб.</div>
+                        <div class="stat-label">Общая выручка</div>
+                    </div>
+                `;
+                
+                // Обновляем таблицу заказов
+                const container = document.getElementById('reportsContainer');
+                
+                if (data.orders.length === 0) {
+                    container.innerHTML = '<p>Заказов по выбранным фильтрам не найдено</p>';
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <table class="reports-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Дата</th>
+                                <th>Услуга</th>
+                                <th>Артикул</th>
+                                <th>Сумма</th>
+                                <th>Клиент</th>
+                                <th>Контакт</th>
+                                <th>Способ оплаты</th>
+                                <th>Статус</th>
+                                <th>Тип</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.orders.map(order => `
+                                <tr>
+                                    <td>#${order.id}</td>
+                                    <td>${new Date(order.order_date).toLocaleDateString()}</td>
+                                    <td>${order.service_name}</td>
+                                    <td>${order.service_article || '-'}</td>
+                                    <td>${order.service_price} руб.</td>
+                                    <td>${order.customer_name}</td>
+                                    <td>${order.customer_contact || '-'}</td>
+                                    <td>${order.payment_method}</td>
+                                    <td class="status-${order.status}">${getStatusText(order.status)}</td>
+                                    <td>${order.is_manual ? 'Ручной' : 'Авто'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Ошибка загрузки отчетов:', error);
             }
         }
         
@@ -645,12 +1079,35 @@
                 if (response.ok) {
                     alert('Статус заказа обновлен');
                     loadOrders();
+                    loadReports();
                 } else {
                     throw new Error('Ошибка обновления статуса');
                 }
             } catch (error) {
                 console.error('Ошибка:', error);
                 alert('Ошибка при обновлении статуса: ' + error.message);
+            }
+        }
+        
+        // Функция для удаления заказа
+        async function deleteOrder(orderId) {
+            if (!confirm('Вы уверены, что хотите удалить этот заказ?')) return;
+            
+            try {
+                const response = await fetch(`/api/orders/${orderId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Заказ удален');
+                    loadOrders();
+                    loadReports();
+                } else {
+                    throw new Error('Ошибка удаления заказа');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при удалении заказа: ' + error.message);
             }
         }
         
@@ -670,11 +1127,70 @@
         // Функция для получения текста статуса
         function getStatusText(status) {
             const statuses = {
-                'pending': 'Ожидает',
+                'pending': 'Ожидание',
                 'confirmed': 'Подтвержден',
                 'cancelled': 'Отменен'
             };
             return statuses[status] || status;
+        }
+        
+        // Функции для управления способами оплаты
+        function showAddPaymentMethodForm() {
+            document.getElementById('addPaymentMethodForm').style.display = 'block';
+        }
+        
+        function hideAddPaymentMethodForm() {
+            document.getElementById('addPaymentMethodForm').style.display = 'none';
+            document.getElementById('paymentMethodForm').reset();
+        }
+        
+        async function editPaymentMethod(methodId) {
+            // Реализация редактирования способа оплаты
+            const newName = prompt('Введите новое название способа оплаты:');
+            if (newName) {
+                // Здесь будет код для обновления способа оплаты
+                alert('Функция редактирования в разработке');
+            }
+        }
+        
+        async function deletePaymentMethod(methodId) {
+            if (!confirm('Вы уверены, что хотите удалить этот способ оплаты?')) return;
+            
+            try {
+                const response = await fetch(`/api/payment-methods/${methodId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Способ оплаты удален');
+                    loadPaymentMethods();
+                } else {
+                    throw new Error('Ошибка удаления способа оплаты');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при удалении способа оплаты: ' + error.message);
+            }
+        }
+        
+        // Функции для ручного добавления заказов
+        function showManualOrderForm() {
+            document.getElementById('manualOrderForm').style.display = 'block';
+        }
+        
+        function hideManualOrderForm() {
+            document.getElementById('manualOrderForm').style.display = 'none';
+            document.getElementById('manualOrderForm').reset();
+        }
+        
+        // Функция для экспорта в CSV
+        function exportToCSV() {
+            alert('Функция экспорта в CSV в разработке');
+        }
+        
+        // Функция для печати отчета
+        function printReport() {
+            window.print();
         }
         
         // Обработчики для drag and drop загрузки изображений
@@ -697,31 +1213,6 @@
                 }
             });
             
-            // Обработчики для drag and drop
-            fileInputLabel.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                this.style.background = '#e9ecef';
-                this.style.borderColor = '#3498db';
-            });
-            
-            fileInputLabel.addEventListener('dragleave', function(e) {
-                e.preventDefault();
-                this.style.background = '';
-                this.style.borderColor = '';
-            });
-            
-            fileInputLabel.addEventListener('drop', function(e) {
-                e.preventDefault();
-                this.style.background = '';
-                this.style.borderColor = '';
-                
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    fileInput.files = e.dataTransfer.files;
-                    const event = new Event('change');
-                    fileInput.dispatchEvent(event);
-                }
-            });
-            
             // Загружаем диагностику при открытии вкладки
             loadDebugInfo();
             
@@ -734,6 +1225,25 @@
             document.querySelector('.tab-button[onclick="openTab(\'orders\')"]').addEventListener('click', function() {
                 setTimeout(loadOrders, 100);
             });
+            
+            // Загружаем способы оплаты при открытии вкладки
+            document.querySelector('.tab-button[onclick="openTab(\'payment-methods\')"]').addEventListener('click', function() {
+                setTimeout(loadPaymentMethods, 100);
+            });
+            
+            // Загружаем отчеты при открытии вкладки отчетов
+            document.querySelector('.tab-button[onclick="openTab(\'reports\')"]').addEventListener('click', function() {
+                setTimeout(loadReports, 100);
+            });
+            
+            // Устанавливаем текущую дату по умолчанию для фильтров отчетов
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reportEndDate').value = today;
+            
+            // Загружаем отчеты при загрузке страницы, если открыта вкладка отчетов
+            if (document.getElementById('reports').classList.contains('active')) {
+                loadReports();
+            }
         });
     </script>
 </body>
