@@ -1,158 +1,260 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Panel</title>
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-input, select, button { margin: 5px 0; padding: 5px; }
-section { margin-bottom: 30px; }
-img { max-width: 100px; display: block; margin-top: 5px; }
-</style>
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    input, select, button { margin: 5px 0; padding: 5px; }
+    .container { max-width: 600px; margin: auto; }
+    .category, .product { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+    img { max-width: 100px; display: block; margin-top: 5px; }
+  </style>
 </head>
 <body>
-<h1>Панель администратора</h1>
+  <div class="container">
+    <h2>Admin Panel</h2>
 
-<section id="store-info">
-<h2>Информация о магазине</h2>
-<input type="text" id="store-name" placeholder="Название магазина">
-<input type="text" id="store-inn" placeholder="ИНН">
-<input type="text" id="store-address" placeholder="Адрес">
-<input type="email" id="store-email" placeholder="Email">
-<input type="tel" id="store-phone" placeholder="Телефон">
-<button onclick="saveStoreInfo()">Сохранить</button>
-</section>
+    <h3>Add Category</h3>
+    <input type="text" id="categoryName" placeholder="Category Name">
+    <button id="addCategoryBtn">Add Category</button>
 
-<section id="categories">
-<h2>Категории</h2>
-<input type="text" id="category-name" placeholder="Название категории">
-<button onclick="addCategory()">Добавить категорию</button>
-<ul id="category-list"></ul>
-</section>
+    <h3>Categories</h3>
+    <div id="categoriesList"></div>
 
-<section id="products">
-<h2>Товары</h2>
-<input type="text" id="product-title" placeholder="Название товара">
-<input type="text" id="product-description" placeholder="Описание">
-<input type="number" id="product-price" placeholder="Цена">
-<select id="product-category"></select>
-<input type="file" id="product-image">
-<button onclick="addProduct()">Добавить товар</button>
-<ul id="product-list"></ul>
-</section>
+    <h3>Add Product</h3>
+    <input type="text" id="productName" placeholder="Product Name"><br>
+    <select id="productCategory"></select><br>
+    <input type="number" id="productPrice" placeholder="Price"><br>
+    <input type="file" id="productImage"><br>
+    <button id="addProductBtn">Add Product</button>
 
-<script>
-const ADMIN_TOKEN = 'SUPER_SECRET_TOKEN';
+    <h3>Products</h3>
+    <div id="productsList"></div>
+  </div>
 
-// --- Store info ---
-async function loadStoreInfo() {
-    const res = await fetch('/api/store_info');
-    const data = await res.json();
-    if(data){
-        document.getElementById('store-name').value = data.name || '';
-        document.getElementById('store-inn').value = data.inn || '';
-        document.getElementById('store-address').value = data.address || '';
-        document.getElementById('store-email').value = data.email || '';
-        document.getElementById('store-phone').value = data.phone || '';
+  <script>
+    async function fetchData() {
+      const res = await fetch('/api/data');
+      const data = await res.json();
+      return data;
     }
-}
 
-async function saveStoreInfo(){
-    const body = {
-        name: document.getElementById('store-name').value,
-        inn: document.getElementById('store-inn').value,
-        address: document.getElementById('store-address').value,
-        email: document.getElementById('store-email').value,
-        phone: document.getElementById('store-phone').value
-    };
-    await fetch('/api/store_info', {
-        method:'POST',
-        headers: { 'Content-Type':'application/json', 'x-admin-token': ADMIN_TOKEN },
-        body: JSON.stringify(body)
+    async function updateCategories() {
+      const data = await fetchData();
+      const categoriesDiv = document.getElementById('categoriesList');
+      const categorySelect = document.getElementById('productCategory');
+      categoriesDiv.innerHTML = '';
+      categorySelect.innerHTML = '';
+
+      data.categories.forEach(cat => {
+        const div = document.createElement('div');
+        div.className = 'category';
+        div.textContent = cat.name;
+        categoriesDiv.appendChild(div);
+
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        categorySelect.appendChild(option);
+      });
+    }
+
+    async function updateProducts() {
+      const data = await fetchData();
+      const productsDiv = document.getElementById('productsList');
+      productsDiv.innerHTML = '';
+
+      data.products.forEach(prod => {
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `<strong>${prod.name}</strong> - $${prod.price}<br>
+                         Category ID: ${prod.categoryId}`;
+        if (prod.image) {
+          const img = document.createElement('img');
+          img.src = `/uploads/${prod.image}`;
+          div.appendChild(img);
+        }
+        productsDiv.appendChild(div);
+      });
+    }
+
+    document.getElementById('addCategoryBtn').addEventListener('click', async () => {
+      const name = document.getElementById('categoryName').value;
+      if (!name) return alert('Enter category name');
+
+      const res = await fetch('/api/add-category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('categoryName').value = '';
+        updateCategories();
+      }
     });
-    alert('Сохранено');
-}
 
-// --- Categories ---
-async function loadCategories(){
-    const res = await fetch('/api/categories');
-    const data = await res.json();
-    const list = document.getElementById('category-list');
-    const select = document.getElementById('product-category');
-    list.innerHTML = '';
-    select.innerHTML = '';
-    data.forEach(c=>{
-        const li = document.createElement('li');
-        li.textContent = c.name;
-        list.appendChild(li);
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = c.name;
-        select.appendChild(opt);
-    });
-}
+    document.getElementById('addProductBtn').addEventListener('click', async () => {
+      const name = document.getElementById('productName').value;
+      const categoryId = document.getElementById('productCategory').value;
+      const price = document.getElementById('productPrice').value;
+      const imageFile = document.getElementById('productImage').files[0];
 
-async function addCategory(){
-    const name = document.getElementById('category-name').value;
-    if(!name) return alert('Введите название категории');
-    await fetch('/api/categories', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json','x-admin-token':ADMIN_TOKEN },
-        body: JSON.stringify({name})
-    });
-    document.getElementById('category-name').value = '';
-    loadCategories();
-}
+      if (!name || !categoryId || !price) return alert('Fill all fields');
 
-// --- Products ---
-async function loadProducts(){
-    const res = await fetch('/api/products');
-    const data = await res.json();
-    const list = document.getElementById('product-list');
-    list.innerHTML = '';
-    data.forEach(p=>{
-        const li = document.createElement('li');
-        li.innerHTML = `<b>${p.title}</b> - ${p.description} - ${p.price} руб.<br>
-                        ${p.image_url ? `<img src="${p.image_url}">` : ''}`;
-        list.appendChild(li);
-    });
-}
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('categoryId', categoryId);
+      formData.append('price', price);
+      if (imageFile) formData.append('image', imageFile);
 
-async function addProduct(){
-    const title = document.getElementById('product-title').value;
-    const description = document.getElementById('product-description').value;
-    const price = document.getElementById('product-price').value;
-    const category_id = document.getElementById('product-category').value;
-    const imageFile = document.getElementById('product-image').files[0];
-
-    if(!title || !price || !category_id) return alert('Заполните все поля');
-
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('price', price);
-    formData.append('category_id', category_id);
-    if(imageFile) formData.append('image', imageFile);
-
-    await fetch('/api/products', {
-        method:'POST',
-        headers:{ 'x-admin-token': ADMIN_TOKEN },
+      const res = await fetch('/api/add-product', {
+        method: 'POST',
         body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('productName').value = '';
+        document.getElementById('productPrice').value = '';
+        document.getElementById('productImage').value = '';
+        updateProducts();
+      }
     });
 
-    document.getElementById('product-title').value = '';
-    document.getElementById('product-description').value = '';
-    document.getElementById('product-price').value = '';
-    document.getElementById('product-image').value = '';
+    // Инициализация
+    updateCategories();
+    updateProducts();
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    input, select, button { margin: 5px 0; padding: 5px; }
+    .container { max-width: 600px; margin: auto; }
+    .category, .product { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+    img { max-width: 100px; display: block; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Admin Panel</h2>
 
-    loadProducts();
-}
+    <h3>Add Category</h3>
+    <input type="text" id="categoryName" placeholder="Category Name">
+    <button id="addCategoryBtn">Add Category</button>
 
-// --- Initial load ---
-loadStoreInfo();
-loadCategories();
-loadProducts();
-</script>
+    <h3>Categories</h3>
+    <div id="categoriesList"></div>
+
+    <h3>Add Product</h3>
+    <input type="text" id="productName" placeholder="Product Name"><br>
+    <select id="productCategory"></select><br>
+    <input type="number" id="productPrice" placeholder="Price"><br>
+    <input type="file" id="productImage"><br>
+    <button id="addProductBtn">Add Product</button>
+
+    <h3>Products</h3>
+    <div id="productsList"></div>
+  </div>
+
+  <script>
+    async function fetchData() {
+      const res = await fetch('/api/data');
+      const data = await res.json();
+      return data;
+    }
+
+    async function updateCategories() {
+      const data = await fetchData();
+      const categoriesDiv = document.getElementById('categoriesList');
+      const categorySelect = document.getElementById('productCategory');
+      categoriesDiv.innerHTML = '';
+      categorySelect.innerHTML = '';
+
+      data.categories.forEach(cat => {
+        const div = document.createElement('div');
+        div.className = 'category';
+        div.textContent = cat.name;
+        categoriesDiv.appendChild(div);
+
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        categorySelect.appendChild(option);
+      });
+    }
+
+    async function updateProducts() {
+      const data = await fetchData();
+      const productsDiv = document.getElementById('productsList');
+      productsDiv.innerHTML = '';
+
+      data.products.forEach(prod => {
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `<strong>${prod.name}</strong> - $${prod.price}<br>
+                         Category ID: ${prod.categoryId}`;
+        if (prod.image) {
+          const img = document.createElement('img');
+          img.src = `/uploads/${prod.image}`;
+          div.appendChild(img);
+        }
+        productsDiv.appendChild(div);
+      });
+    }
+
+    document.getElementById('addCategoryBtn').addEventListener('click', async () => {
+      const name = document.getElementById('categoryName').value;
+      if (!name) return alert('Enter category name');
+
+      const res = await fetch('/api/add-category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('categoryName').value = '';
+        updateCategories();
+      }
+    });
+
+    document.getElementById('addProductBtn').addEventListener('click', async () => {
+      const name = document.getElementById('productName').value;
+      const categoryId = document.getElementById('productCategory').value;
+      const price = document.getElementById('productPrice').value;
+      const imageFile = document.getElementById('productImage').files[0];
+
+      if (!name || !categoryId || !price) return alert('Fill all fields');
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('categoryId', categoryId);
+      formData.append('price', price);
+      if (imageFile) formData.append('image', imageFile);
+
+      const res = await fetch('/api/add-product', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('productName').value = '';
+        document.getElementById('productPrice').value = '';
+        document.getElementById('productImage').value = '';
+        updateProducts();
+      }
+    });
+
+    // Инициализация
+    updateCategories();
+    updateProducts();
+  </script>
 </body>
 </html>
