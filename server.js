@@ -10,7 +10,6 @@ app.use(express.static('public'));
 
 // Функция для получения подключения к БД
 async function getDatabaseConnection() {
-  // Проверяем переменные окружения Railway
   const databaseUrl = process.env.DATABASE_URL;
   
   if (!databaseUrl) {
@@ -24,7 +23,6 @@ async function getDatabaseConnection() {
   });
 
   try {
-    // Проверяем подключение
     const client = await pool.connect();
     console.log('✅ Подключение к базе данных установлено');
     client.release();
@@ -40,7 +38,6 @@ async function initializeDatabase(pool) {
   try {
     const client = await pool.connect();
     
-    // Создаем таблицы
     await client.query(`
       CREATE TABLE IF NOT EXISTS shop_settings (
         id SERIAL PRIMARY KEY,
@@ -82,7 +79,7 @@ async function initializeDatabase(pool) {
       )
     `);
 
-    // Добавляем начальные данные
+    // Проверяем, есть ли данные в shop_settings
     const settingsCheck = await client.query('SELECT COUNT(*) FROM shop_settings');
     if (parseInt(settingsCheck.rows[0].count) === 0) {
       await client.query(`
@@ -98,26 +95,6 @@ async function initializeDatabase(pool) {
     console.error('❌ Ошибка инициализации базы:', error);
     return false;
   }
-}
-
-// Запуск приложения
-async function startServer() {
-  const pool = await getDatabaseConnection();
-  
-  if (!pool) {
-    console.log('🚧 Запуск без базы данных (режим заглушки)');
-    // Режим без базы данных - для тестирования
-    setupRoutesWithoutDB();
-  } else {
-    await initializeDatabase(pool);
-    setupRoutesWithDB(pool);
-  }
-
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Сервер запущен на порту ${PORT}`);
-    console.log(`📱 Мини-приложение доступно по адресу: https://your-project.railway.app`);
-  });
 }
 
 // Настройка маршрутов с базой данных
@@ -136,9 +113,11 @@ function setupRoutesWithDB(pool) {
     try {
       const { shop_name, holder_name, inn, registration_address, organization_address, email, phone } = req.body;
       
+      // Удаляем старые настройки и добавляем новые
       await pool.query('DELETE FROM shop_settings');
       const result = await pool.query(
-        'INSERT INTO shop_settings (shop_name, holder_name, inn, registration_address, organization_address, email, phone) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        `INSERT INTO shop_settings (shop_name, holder_name, inn, registration_address, organization_address, email, phone) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
         [shop_name, holder_name, inn, registration_address, organization_address, email, phone]
       );
       
@@ -148,11 +127,55 @@ function setupRoutesWithDB(pool) {
     }
   });
 
+  // API для категорий
+  app.get('/api/categories', async (req, res) => {
+    try {
+      const result = await pool.query('SELECT * FROM categories WHERE is_active = true ORDER BY sort_order, name');
+      res.json(result.rows);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/categories', async (req, res) => {
+    try {
+      const { name, description, image_url, sort_order } = req.body;
+      const result = await pool.query(
+        `INSERT INTO categories (name, description, image_url, sort_order) 
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [name, description, image_url, sort_order]
+      );
+      res.json(result.rows[0]);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // API для услуг
   app.get('/api/services', async (req, res) => {
     try {
-      const result = await pool.query('SELECT * FROM services WHERE is_active = true ORDER BY name');
+      const result = await pool.query(`
+        SELECT s.*, c.name as category_name 
+        FROM services s 
+        LEFT JOIN categories c ON s.category_id = c.id 
+        WHERE s.is_active = true 
+        ORDER BY s.name
+      `);
       res.json(result.rows);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/services', async (req, res) => {
+    try {
+      const { article, name, description, price, category_id, image_url } = req.body;
+      const result = await pool.query(
+        `INSERT INTO services (article, name, description, price, category_id, image_url) 
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [article, name, description, price, category_id, image_url]
+      );
+      res.json(result.rows[0]);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -181,9 +204,28 @@ function setupRoutesWithoutDB() {
         name: 'Пример услуги',
         description: 'Описание примерной услуги',
         price: 1000,
-        image_url: null
+        image_url: null,
+        category_name: 'Основные'
       }
     ]);
+  });
+}
+
+// Запуск приложения
+async function startServer() {
+  const pool = await getDatabaseConnection();
+  
+  if (!pool) {
+    console.log('🚧 Запуск без базы данных (режим заглушки)');
+    setupRoutesWithoutDB();
+  } else {
+    await initializeDatabase(pool);
+    setupRoutesWithDB(pool);
+  }
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Сервер запущен на порту ${PORT}`);
   });
 }
 
