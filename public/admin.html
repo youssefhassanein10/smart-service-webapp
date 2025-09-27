@@ -2,193 +2,110 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Админ-панель магазина</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>Админка — Магазин</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-light">
-  <div class="container mt-5">
-    <h1 class="mb-4">Админ-панель магазина</h1>
+<body class="container py-4">
+  <h1 class="mb-4">Админка</h1>
 
-    <!-- Форма для входа -->
-    <div id="loginForm" class="card p-4 mb-4">
-      <h4>Вход администратора</h4>
-      <input type="password" id="adminPass" class="form-control mb-3" placeholder="Введите пароль">
-      <button class="btn btn-primary" onclick="login()">Войти</button>
+  <!-- Форма добавления товара -->
+  <form id="productForm" class="mb-4">
+    <div class="mb-3">
+      <label class="form-label">Название товара</label>
+      <input type="text" class="form-control" name="title" required>
     </div>
-
-    <!-- Панель администратора -->
-    <div id="adminPanel" style="display:none;">
-      <!-- Форма добавления товара -->
-      <div class="card p-4 mb-4">
-        <h4>Добавить новый товар</h4>
-        <form id="productForm">
-          <input type="text" id="title" class="form-control mb-3" placeholder="Название" required>
-          <textarea id="description" class="form-control mb-3" placeholder="Описание"></textarea>
-          <input type="number" id="price" class="form-control mb-3" placeholder="Цена" required>
-          <input type="text" id="sku" class="form-control mb-3" placeholder="Артикул">
-          <label class="form-label">Фото товара:</label>
-          <input type="file" id="image" class="form-control mb-3" accept="image/*">
-          <button type="submit" class="btn btn-success">Добавить товар</button>
-        </form>
-      </div>
-
-      <!-- Список товаров -->
-      <div class="card p-4">
-        <h4>Все товары</h4>
-        <div id="productList" class="row"></div>
-      </div>
+    <div class="mb-3">
+      <label class="form-label">Описание</label>
+      <textarea class="form-control" name="description"></textarea>
     </div>
-  </div>
-
-  <!-- Модальное окно для редактирования -->
-  <div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form id="editForm">
-          <div class="modal-header">
-            <h5 class="modal-title">Редактировать товар</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <input type="hidden" id="editId">
-            <input type="text" id="editTitle" class="form-control mb-3" placeholder="Название" required>
-            <textarea id="editDescription" class="form-control mb-3" placeholder="Описание"></textarea>
-            <input type="number" id="editPrice" class="form-control mb-3" placeholder="Цена" required>
-            <input type="text" id="editSku" class="form-control mb-3" placeholder="Артикул">
-            <label class="form-label">Новое фото (необязательно):</label>
-            <input type="file" id="editImage" class="form-control mb-3" accept="image/*">
-          </div>
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Сохранить</button>
-          </div>
-        </form>
-      </div>
+    <div class="mb-3">
+      <label class="form-label">Цена</label>
+      <input type="number" class="form-control" name="price" required>
     </div>
-  </div>
+    <div class="mb-3">
+      <label class="form-label">Фото</label>
+      <input type="file" class="form-control" id="imageInput" accept="image/*">
+    </div>
+    <button type="submit" class="btn btn-primary">Добавить товар</button>
+  </form>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <hr>
+  <h2>Список товаров</h2>
+  <div id="products" class="row"></div>
+
   <script>
-    let adminPass = "";
+    const API = '/api';
+    const ADMIN_PASS = 'changeme'; // поменяй на свой пароль!
 
-    function login() {
-      const pass = document.getElementById('adminPass').value.trim();
-      if (!pass) return alert("Введите пароль");
-      adminPass = pass;
-      document.getElementById("loginForm").style.display = "none";
-      document.getElementById("adminPanel").style.display = "block";
-      loadProducts();
+    // Загрузка фото на сервер
+    async function uploadImage(file) {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(API + '/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      return data.url;
     }
 
     // Добавление товара
-    document.getElementById("productForm").addEventListener("submit", async (e) => {
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const title = document.getElementById("title").value;
-      const description = document.getElementById("description").value;
-      const price = document.getElementById("price").value;
-      const sku = document.getElementById("sku").value;
-      const imageFile = document.getElementById("image").files[0];
+      const form = e.target;
+      let image_url = '';
 
-      let imageUrl = "";
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append("image", imageFile);
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-        const uploadData = await uploadRes.json();
-        imageUrl = uploadData.url;
+      const file = document.getElementById('imageInput').files[0];
+      if (file) {
+        image_url = await uploadImage(file);
       }
 
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-pass": adminPass },
-        body: JSON.stringify({ title, description, price, sku, image_url: imageUrl })
+      const body = {
+        title: form.title.value,
+        description: form.description.value,
+        price: form.price.value,
+        image_url,
+        admin_pass: ADMIN_PASS
+      };
+
+      await fetch(API + '/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
       });
 
-      if (res.ok) {
-        document.getElementById("productForm").reset();
-        loadProducts();
-      } else {
-        const err = await res.json();
-        alert("Ошибка: " + err.error);
-      }
+      form.reset();
+      loadProducts();
     });
 
-    // Загрузка всех товаров
+    // Показ товаров
     async function loadProducts() {
-      const res = await fetch("/api/products");
+      const res = await fetch(API + '/products');
       const products = await res.json();
-      const list = document.getElementById("productList");
-      list.innerHTML = "";
-
-      products.forEach(p => {
-        const col = document.createElement("div");
-        col.className = "col-md-4 mb-3";
-        col.innerHTML = `
-          <div class="card h-100">
-            <img src="${p.image_url || 'https://via.placeholder.com/300x200'}" class="card-img-top" alt="${p.title}">
+      const container = document.getElementById('products');
+      container.innerHTML = products.map(p => `
+        <div class="col-md-4 mb-3">
+          <div class="card">
+            <img src="${p.image_url || 'https://via.placeholder.com/300'}" class="card-img-top" alt="">
             <div class="card-body">
               <h5 class="card-title">${p.title}</h5>
-              <p class="card-text">Цена: ${p.price} ₽</p>
-              <button class="btn btn-warning btn-sm me-2" onclick="openEdit('${p.id}', '${p.title}', '${p.description}', '${p.price}', '${p.sku}', '${p.image_url || ''}')">Редактировать</button>
+              <p class="card-text">${p.description || ''}</p>
+              <p><strong>${p.price} ₽</strong></p>
               <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">Удалить</button>
             </div>
           </div>
-        `;
-        list.appendChild(col);
-      });
+        </div>
+      `).join('');
     }
 
     // Удаление товара
     async function deleteProduct(id) {
-      if (!confirm("Удалить этот товар?")) return;
-      const res = await fetch("/api/products/" + id, {
-        method: "DELETE",
-        headers: { "x-admin-pass": adminPass }
+      await fetch(API + '/products/' + id, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_pass: ADMIN_PASS })
       });
-      if (res.ok) loadProducts();
+      loadProducts();
     }
 
-    // Открыть модалку редактирования
-    function openEdit(id, title, description, price, sku, image) {
-      document.getElementById("editId").value = id;
-      document.getElementById("editTitle").value = title;
-      document.getElementById("editDescription").value = description;
-      document.getElementById("editPrice").value = price;
-      document.getElementById("editSku").value = sku;
-      const modal = new bootstrap.Modal(document.getElementById("editModal"));
-      modal.show();
-    }
-
-    // Сохранить изменения
-    document.getElementById("editForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const id = document.getElementById("editId").value;
-      const title = document.getElementById("editTitle").value;
-      const description = document.getElementById("editDescription").value;
-      const price = document.getElementById("editPrice").value;
-      const sku = document.getElementById("editSku").value;
-      const imageFile = document.getElementById("editImage").files[0];
-
-      let imageUrl = null;
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append("image", imageFile);
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-        const uploadData = await uploadRes.json();
-        imageUrl = uploadData.url;
-      }
-
-      const res = await fetch("/api/products/" + id, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "x-admin-pass": adminPass },
-        body: JSON.stringify({ title, description, price, sku, image_url: imageUrl })
-      });
-
-      if (res.ok) {
-        const modal = bootstrap.Modal.getInstance(document.getElementById("editModal"));
-        modal.hide();
-        loadProducts();
-      }
-    });
+    loadProducts();
   </script>
 </body>
 </html>
