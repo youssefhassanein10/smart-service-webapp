@@ -78,9 +78,7 @@ document.getElementById('addCategoryBtn').addEventListener('click', async () => 
   if (res.ok) {
     document.getElementById('categoryName').value = '';
     loadCategories();
-  } else {
-    alert('Ошибка при добавлении категории');
-  }
+  } else alert('Ошибка при добавлении категории');
 });
 
 document.getElementById('addProductBtn').addEventListener('click', async () => {
@@ -96,19 +94,14 @@ document.getElementById('addProductBtn').addEventListener('click', async () => {
   formData.append('category_id', category_id);
   if (imageFile) formData.append('image', imageFile);
 
-  const res = await fetch('/api/add-product', {
-    method: 'POST',
-    body: formData
-  });
+  const res = await fetch('/api/add-product', { method: 'POST', body: formData });
 
   if (res.ok) {
     document.getElementById('productName').value = '';
     document.getElementById('productPrice').value = '';
     document.getElementById('productImage').value = '';
     loadProducts();
-  } else {
-    alert('Ошибка при добавлении товара');
-  }
+  } else alert('Ошибка при добавлении товара');
 });
 
 // Начальная загрузка
