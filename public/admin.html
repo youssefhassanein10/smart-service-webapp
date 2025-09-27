@@ -37,8 +37,9 @@ img { max-width: 100px; }
 </table>
 
 <script>
+// Загрузка категорий
 async function loadCategories() {
-  const res = await fetch('/api/categories');
+  const res = await fetch('/categories');
   const categories = await res.json();
   const tbody = document.querySelector('#categoriesTable tbody');
   tbody.innerHTML = '';
@@ -50,27 +51,28 @@ async function loadCategories() {
   });
 }
 
+// Загрузка товаров
 async function loadProducts() {
-  const res = await fetch('/api/products');
+  const res = await fetch('/products');
   const products = await res.json();
   const tbody = document.querySelector('#productsTable tbody');
   tbody.innerHTML = '';
   products.forEach(prod => {
-    tbody.innerHTML += `
-      <tr>
-        <td>${prod.id}</td>
-        <td>${prod.name}</td>
-        <td>${prod.price}</td>
-        <td>${prod.category_id}</td>
-        <td>${prod.image ? `<img src="${prod.image}">` : ''}</td>
-      </tr>`;
+    tbody.innerHTML += `<tr>
+      <td>${prod.id}</td>
+      <td>${prod.name}</td>
+      <td>${prod.price}</td>
+      <td>${prod.category_id}</td>
+      <td>${prod.image ? `<img src="${prod.image}">` : ''}</td>
+    </tr>`;
   });
 }
 
+// Кнопка добавления категории (не работает)
 document.getElementById('addCategoryBtn').addEventListener('click', async () => {
   const name = document.getElementById('categoryName').value.trim();
   if (!name) return alert('Введите название категории');
-  const res = await fetch('/api/add-category', {
+  const res = await fetch('/add-category', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name })
@@ -81,6 +83,7 @@ document.getElementById('addCategoryBtn').addEventListener('click', async () => 
   } else alert('Ошибка при добавлении категории');
 });
 
+// Кнопка добавления товара
 document.getElementById('addProductBtn').addEventListener('click', async () => {
   const name = document.getElementById('productName').value.trim();
   const price = document.getElementById('productPrice').value.trim();
@@ -94,8 +97,7 @@ document.getElementById('addProductBtn').addEventListener('click', async () => {
   formData.append('category_id', category_id);
   if (imageFile) formData.append('image', imageFile);
 
-  const res = await fetch('/api/add-product', { method: 'POST', body: formData });
-
+  const res = await fetch('/add-product', { method: 'POST', body: formData });
   if (res.ok) {
     document.getElementById('productName').value = '';
     document.getElementById('productPrice').value = '';
@@ -104,7 +106,6 @@ document.getElementById('addProductBtn').addEventListener('click', async () => {
   } else alert('Ошибка при добавлении товара');
 });
 
-// Начальная загрузка
 loadCategories();
 loadProducts();
 </script>
