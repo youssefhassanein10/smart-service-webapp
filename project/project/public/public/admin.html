@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Админ — Магазин</title>
+  <style>
+    body{font-family:Inter,Arial;max-width:1100px;margin:12px auto;padding:12px;background:#f6f7fb}
+    header{display:flex;justify-content:space-between;align-items:center}
+    h1{margin:0}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:12px;margin-top:12px}
+    .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    input,select,textarea,button{padding:8px;border-radius:8px;border:1px solid #ddd;width:100%;box-sizing:border-box}
+    .row{display:flex;gap:8px}
+    .small{font-size:13px;color:#666}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+    .actions{display:flex;gap:8px}
+    .btn-danger{background:#ef4444;color:#fff;border:0;padding:8px;border-radius:8px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Админ-панель</h1>
+    <div>
+      <button id="logout" style="display:none">Выйти</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="login-card" class="card">
+      <h3>Войти как админ</h3>
+      <div class="small">Введите пароль администратора</div>
+      <input id="admin-pass" type="password" placeholder="Admin password" />
+      <div style="margin-top:8px">
+        <button id="login-btn">Войти</button>
+      </div>
+    </div>
+
+    <div id="app" style="display:none">
+      <div class="grid">
+        <div class="card">
+          <h3>Товары</h3>
+          <form id="product-form">
+            <input id="p-title" placeholder="Название" required />
+            <input id="p-price" placeholder="Цена (в рублях)" type="number" />
+            <input id="p-sku" placeholder="Артикул (SKU)" />
+            <input id="p-image" placeholder="URL изображения (или загружайте через /api/upload)" />
+            <textarea id="p-desc" placeholder="Описание" rows="3"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="save-product">Сохранить</button>
+              <button id="clear-product" type="button">Очистить</button>
+            </div>
+          </form>
+
+          <h4 style="margin-top:12px">Список товаров</h4>
+          <div id="products-list" style="max-height:300px;overflow:auto"></div>
+        </div>
+
+        <div class="card">
+          <h3>Ручной ввод заказов</h3>
+          <form id="order-form">
+            <input id="o-amount" placeholder="Сумма (руб)" type="number" required />
+            <select id="o-method"></select>
+            <input id="o-customer" placeholder="Контакт покупателя (тел/ник)" />
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="save-order">Добавить заказ</button>
+            </div>
+          </form>
+
+          <h4 style="margin-top:12px">Отчёты</h4>
+          <div class="small">Фильтр по дате</div>
+          <input id="from" type="date" />
+          <input id="to" type="date" style="margin-top:6px" />
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="get-report">Показать</button>
+            <button id="export-csv">Скачать CSV</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <h3>Заказы</h3>
+        <div id="orders-table"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API = '/api';
+    const STORAGE_KEY = 'miniapp_admin_pass';
+
+    function authHeaders() {
+      const pass = localStorage.getItem(STORAGE_KEY);
+      return pass ? { 'x-admin-pass': pass } : {};
+    }
+
+    // Login handling
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const pass = document.getElementById('admin-pass').value.trim();
+      if (!pass) return alert('Введите пароль');
+      // quick check: try get payments with header
+      const res = await fetch(API + '/payments', { headers: { 'x-admin-pass': pass } });
+      if (res.status === 200) {
+        localStorage.setItem(STORAGE_KEY, pass);
+        showApp();
+      } else {
+        alert('Неверный пароль или сервер не отвечает');
+      }
+    });
+
+    document.getElementById('logout').addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    });
+
+    function showApp() {
+      document.getElementById('login-card').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('logout').style.display = 'inline-block';
+      loadPayments();
+      loadProducts();
+      loadOrders();
+    }
+
+    // Products
+    let editingId = null;
+    document.getElementById('save-product').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('p-title').value.trim();
+      const price = Number(document.getElementById('p-price').value || 0);
+      const sku = document.getElementById('p-sku').value.trim();
+      const image = document.getElementById('p-image').value.trim();
+      const desc = document.getElementById('p-desc').value.trim();
+      if (!title) return alert('Введите название');
+
+      const payload = { title, price, sku, image_url: image, description: desc };
+      const headers = Object.assign({'Content-Type':'application/json'}, authHeaders());
+      if (editingId) {
+        await fetch(API + '/products/' + editingId, { method:'PUT', headers, body: JSON.stringify(payload) });
+      } else {
+        await fetch(API + '/products', { method:'POST', headers, body: JSON.stringify(payload) });
+      }
+      clearProductForm();
+      loadProducts();
+    });
+
+    function clearProductForm(){
+      editingId = null;
+      document.getElementById('p-title').value='';
+      document.getElementById('p-price').value='';
+      document.getElementById('p-sku').value='';
+      document.getElementById('p-image').value='';
+      document.getElementById('p-desc').value='';
+    }
+    document.getElementById('clear-product').addEventListener('click',(e)=>{ e.preventDefault(); clearProductForm(); });
+
+    async function loadProducts(){
+      const res = await fetch(API + '/products');
+      const list = await res.json();
+      const cont = document.getElementById('products-list');
+      cont.innerHTML = list.map(p => `
+        <div style="display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #f0f0f0">
+          <img src="${p.image_url||'https://via.placeholder.com/80x60'}" style="width:80px;height:60px;object-fit:cover;border-radius:6px" />
+          <div style="flex:1">
+            <div style="font-weight:700">${escapeHtml(p.title)}</div>
+            <div class="small">Цена: ${p.price} — Артикул: ${escapeHtml(p.sku||'-')}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button data-id="${p.id}" class="edit-p">Ред.</button>
+            <button data-id="${p.id}" class="del-p" style="background:#ef4444;color:#fff">Удал.</button>
+          </div>
+        </div>
+      `).join('');
+
+      document.querySelectorAll('.edit-p').forEach(b=>b.addEventListener('click', async (e)=>{
+        const id = e.target.dataset.id;
+        const res = await fetch(API + '/products/' + id);
+        const p = await res.json();
+        editingId = id;
+        document.getElementById('p-title').value = p.title;
+        document.getElementById('p-price').value = p.price;
+        document.getElementById('p-sku').value = p.sku;
+        document.getElementById('p-image').value = p.image_url || '';
+        document.getElementById('p-desc').value = p.description || '';
+      }));
+
+      document.querySelectorAll('.del-p').forEach(b=>b.addEventListener('click', async (e)=>{
+        if(!confirm('Удалить товар?')) return;
+        const id = e.target.dataset.id;
+        await fetch(API + '/products/' + id, { method:'DELETE', headers: authHeaders() });
+        loadProducts();
+      }));
+    }
+
+    // Payments load / manage
+    async function loadPayments(){
+      const res = await fetch(API + '/payments', { headers: authHeaders() });
+      if (res.status === 401) return alert('Admin password is wrong or missing');
+      const list = await res.json();
+      const sel = document.getElementById('o-method');
+      sel.innerHTML = list.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('');
+    }
+
+    // Orders (manual creation)
+    document.getElementById('save-order').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const amount = Number(document.getElementById('o-amount').value || 0);
+      const method = document.getElementById('o-method').value;
+      const customer = document.getElementById('o-customer').value.trim();
+      if (!amount) return alert('Введите сумму');
+      const payload = { amount, payment_method_id: method, customer_contact: customer };
+      const res = await fetch(API + '/orders', { method:'POST', headers: {'Content-Type':'application/json', ...authHeaders()}, body: JSON.stringify(payload) });
+      if (res.ok) {
+        alert('Заказ добавлен');
+        loadOrders();
+      } else {
+        alert('Ошибка при добавлении заказа');
+      }
+    });
+
+    // Load orders table
+    async function loadOrders(){
+      const from = document.getElementById('from').value || '';
+      const to = document.getElementById('to').value || '';
+      const url = new URL(API + '/orders', location.origin);
+      if (from) url.searchParams.set('from', from);
+      if (to) url.searchParams.set('to', to);
+      const res = await fetch(url.toString(), { headers: authHeaders() });
+      if (res.status === 401) return alert('Admin password required');
+      const rows = await res.json();
+      renderOrders(rows);
+    }
+
+    function renderOrders(rows){
+      const out = document.getElementById('orders-table');
+      if (!rows.length) { out.innerHTML = '<div class="small">Заказов нет</div>'; return; }
+      out.innerHTML = `<table><thead><tr><th>Дата</th><th>Сумма</th><th>Метод</th><th>Клиент</th><th>Действия</th></tr></thead><tbody>${
+        rows.map(r=>{
+          const d = new Date(r.created_at);
+          return `<tr>
+            <td>${d.toLocaleString()}</td>
+            <td>${r.amount}</td>
+            <td>${r.payment_method_id||'—'}</td>
+            <td>${escapeHtml(r.customer_contact||'—')}</td>
+            <td><button data-id="${r.id}" class="del-order btn-danger">Удалить</button></td>
+          </tr>`;
+        }).join('')
+      }</tbody></table>`;
+
+      document.querySelectorAll('.del-order').forEach(b=>b.addEventListener('click', async e=>{
+        if (!confirm('Удалить заказ?')) return;
+        const id = e.target.dataset.id;
+        await fetch(API + '/orders/' + id, { method:'DELETE', headers: authHeaders() });
+        loadOrders();
+      }));
+    }
+
+    // Reports
+    document.getElementById('get-report').addEventListener('click', loadOrders);
+    document.getElementById('export-csv').addEventListener('click', async () => {
+      const from = document.getElementById('from').value || '';
+      const to = document.getElementById('to').value || '';
+      const url = API + '/reports/csv' + (from||to ? `?${from?('from='+from):''}${from&&to?'&':''}${to?('to='+to):''}` : '');
+      const res = await fetch(url, { headers: authHeaders() });
+      if (res.status === 401) return alert('Admin pass required');
+      const blob = await res.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'report.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+
+    // on load: check saved pass
+    (function(){
+      const p = localStorage.getItem(STORAGE_KEY);
+      if (p) { document.getElementById('admin-pass').value = p; document.getElementById('login-btn').click(); }
+    })();
+
+    function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  </script>
+</body>
+</html>
