@@ -1,272 +1,81 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Smart Service - MiniApp</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<meta charset="UTF-8">
+<title>MiniApp Магазин</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-
-<header class="bg-primary text-white py-3 mb-4 text-center">
-  <h1 id="storeName">Smart Service</h1>
-  <nav id="categoryNav" class="mt-2"></nav>
-</header>
-
 <div class="container py-4">
-  <!-- Админ-кнопки (будут показываться только администратору) -->
-  <div id="adminControls" class="d-flex justify-content-between mb-3" style="display:none;">
-    <button class="btn btn-success btn-sm" id="addCategoryBtn">Добавить категорию</button>
-    <button class="btn btn-success btn-sm" id="addProductBtn">Добавить товар</button>
-    <button class="btn btn-secondary btn-sm" id="editStoreBtn">Редактировать магазин</button>
-  </div>
-  <div id="products" class="row g-4"></div>
+<h1 id="storeName" class="text-center mb-4"></h1>
+<div class="row mb-3">
+<select id="categoryFilter" class="form-select w-auto mx-auto">
+<option value="">Все категории</option>
+</select>
 </div>
+<div id="productList" class="row g-3"></div>
 
-<footer class="bg-dark text-white py-4 mt-5">
-  <div class="container text-center" id="footerInfo"></div>
-</footer>
-
-<!-- Модальные окна -->
+<!-- Footer -->
+<footer class="text-center mt-4" id="storeFooter"></footer>
 
 <!-- Регистрация -->
-<div class="modal fade" id="registerModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Регистрация</h5></div>
-      <div class="modal-body">
-        <form id="registerForm">
-          <div class="mb-3"><label class="form-label">Имя</label><input type="text" class="form-control" name="name" required></div>
-          <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
-          <div class="mb-3"><label class="form-label">Телефон</label><input type="tel" class="form-control" name="phone" required></div>
-          <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Добавление/редактирование категории -->
-<div class="modal fade" id="categoryModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title" id="categoryModalTitle">Добавить категорию</h5></div>
-      <div class="modal-body">
-        <form id="categoryForm">
-          <input type="hidden" name="id">
-          <div class="mb-3"><label class="form-label">Название категории</label><input type="text" class="form-control" name="name" required></div>
-          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Добавление/редактирование товара -->
-<div class="modal fade" id="productModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title" id="productModalTitle">Добавить товар</h5></div>
-      <div class="modal-body">
-        <form id="productForm" enctype="multipart/form-data">
-          <input type="hidden" name="id">
-          <div class="mb-3"><label class="form-label">Название</label><input type="text" class="form-control" name="title" required></div>
-          <div class="mb-3"><label class="form-label">Описание</label><textarea class="form-control" name="description"></textarea></div>
-          <div class="mb-3"><label class="form-label">Цена</label><input type="number" class="form-control" name="price" required></div>
-          <div class="mb-3"><label class="form-label">Фото товара</label><input type="file" class="form-control" name="image"></div>
-          <div class="mb-3"><label class="form-label">Категория</label><select class="form-select" name="category_id"></select></div>
-          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Редактирование магазина -->
-<div class="modal fade" id="storeModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Редактировать магазин</h5></div>
-      <div class="modal-body">
-        <form id="storeForm">
-          <div class="mb-3"><label class="form-label">Название</label><input type="text" class="form-control" name="name"></div>
-          <div class="mb-3"><label class="form-label">ИНН</label><input type="text" class="form-control" name="inn"></div>
-          <div class="mb-3"><label class="form-label">Адрес</label><input type="text" class="form-control" name="address"></div>
-          <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email"></div>
-          <div class="mb-3"><label class="form-label">Телефон</label><input type="tel" class="form-control" name="phone"></div>
-          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
-        </form>
-      </div>
-    </div>
-  </div>
+<div class="modal" tabindex="-1" id="registerModal">
+<div class="modal-dialog"><div class="modal-content p-3">
+<h5>Регистрация</h5>
+<input type="text" id="regName" placeholder="Имя" class="form-control mb-2">
+<input type="email" id="regEmail" placeholder="Email" class="form-control mb-2">
+<input type="tel" id="regPhone" placeholder="Телефон" class="form-control mb-2">
+<button id="regBtn" class="btn btn-primary">Зарегистрироваться</button>
+</div></div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let allProducts = [];
-let selectedCategory = null;
+let currentUser = JSON.parse(localStorage.getItem('user')) || null;
 
-const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
-const categoryModal = new bootstrap.Modal(document.getElementById('categoryModal'));
-const productModal = new bootstrap.Modal(document.getElementById('productModal'));
-const storeModal = new bootstrap.Modal(document.getElementById('storeModal'));
-
-const ADMIN_TOKEN = 'SUPER_SECRET_TOKEN'; // Ваш токен админа
-
-// Проверка и отображение кнопок только для админа
-async function checkAdmin(){
-  const res = await fetch('/api/is_admin', { headers:{'x-admin-token':ADMIN_TOKEN} });
-  const data = await res.json();
-  if(data.admin) document.getElementById('adminControls').style.display='flex';
-  return data.admin;
-}
-
-// Загрузка информации о магазине
 async function loadStoreInfo(){
-  const res = await fetch('/api/store_info');
-  const store = await res.json();
-  document.getElementById('storeName').textContent = store.name || 'Smart Service';
-  const footer = document.getElementById('footerInfo');
-  footer.innerHTML = `
-    <p>${store.name || 'Smart Service'} / ИП Ефимова Анастасия Александровна</p>
-    <p>ИНН: ${store.inn || '1234567890'}</p>
-    <p>Адрес: ${store.address || 'г. Москва, ул. Примерная, д.1'}</p>
-    <p>Email: ${store.email || 'info@smartservice.ru'} | Телефон: ${store.phone || '+7 (999) 123-45-67'}</p>
-  `;
+  const res = await fetch('/api/store_info'); const data=await res.json();
+  document.getElementById('storeName').textContent=data.name||'Магазин';
+  document.getElementById('storeFooter').textContent=`${data.name||''} | ИНН: ${data.inn||''} | ${data.address||''}`;
 }
 
-// Загрузка категорий
 async function loadCategories(){
-  const res = await fetch('/api/categories');
-  const categories = await res.json();
-  const nav = document.getElementById('categoryNav');
-  nav.innerHTML = '';
-  const allBtn = document.createElement('button');
-  allBtn.className = 'btn btn-light btn-sm mx-1';
-  allBtn.textContent = 'Все';
-  allBtn.onclick = ()=>{selectedCategory=null; renderProducts();};
-  nav.appendChild(allBtn);
-  categories.forEach(cat=>{
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-light btn-sm mx-1';
-    btn.textContent = cat.name;
-    btn.onclick = ()=>{selectedCategory=cat.id; renderProducts();};
-    nav.appendChild(btn);
-  });
-
-  const select = document.querySelector('#productForm select[name="category_id"]');
-  if(select){
-    select.innerHTML = '';
-    categories.forEach(cat=>{
-      const opt = document.createElement('option');
-      opt.value = cat.id; opt.textContent = cat.name;
-      select.appendChild(opt);
-    });
-  }
+  const res = await fetch('/api/categories'); const data=await res.json();
+  const filter = document.getElementById('categoryFilter');
+  filter.innerHTML='<option value="">Все категории</option>';
+  data.forEach(c=>filter.innerHTML+=`<option value="${c.id}">${c.name}</option>`);
 }
 
-// Загрузка товаров
-async function loadProducts(){
-  const res = await fetch('/api/products');
-  allProducts = await res.json();
-  renderProducts();
-}
-
-// Отображение товаров
-function renderProducts(){
-  const container = document.getElementById('products');
-  container.innerHTML = '';
-  let productsToShow = selectedCategory ? allProducts.filter(p=>p.category_id==selectedCategory) : allProducts;
-  if(productsToShow.length===0){container.innerHTML='<p>Товаров пока нет</p>'; return;}
-  productsToShow.forEach(p=>{
-    const img = p.image_url ? p.image_url : 'https://via.placeholder.com/300x200?text=Нет+фото';
-    const card = document.createElement('div');
-    card.className='col-md-4';
-    card.innerHTML=`
-      <div class="card h-100 shadow-sm">
-        <img src="${img}" class="card-img-top" alt="${p.title}">
-        <div class="card-body d-flex flex-column">
-          <h5 class="card-title">${p.title}</h5>
-          <p class="card-text">${p.description || ''}</p>
-          <div class="mt-auto">
-            <p class="fw-bold">${p.price} ₽</p>
-            <div class="d-flex justify-content-between">
-              <button class="btn btn-primary btn-sm buy-btn">Купить</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    card.querySelector('.buy-btn').onclick=async()=>{
-      const userData = JSON.parse(localStorage.getItem('userData'));
-      if(!userData){alert('Пожалуйста, зарегистрируйтесь!'); return;}
-      await fetch('/api/buy',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:userData,productId:p.id})});
-      alert(`Товар "${p.title}" добавлен в корзину!`);
-    };
-    container.appendChild(card);
+async function loadProducts(category=''){
+  let url='/api/products';
+  const res = await fetch(url); const data=await res.json();
+  if(category) data=data.filter(p=>Number(p.category_id)===Number(category));
+  const list=document.getElementById('productList'); list.innerHTML='';
+  data.forEach(p=>{
+    const div=document.createElement('div'); div.className='col-4 card p-2';
+    div.innerHTML=`<img src="${p.image_url}" class="img-fluid mb-2"><h5>${p.title}</h5><p>${p.description}</p><b>${p.price} ₽</b>`;
+    list.appendChild(div);
   });
 }
 
-document.addEventListener('DOMContentLoaded',async()=>{
-  await checkAdmin();
-  loadStoreInfo();
-  loadCategories();
-  loadProducts();
+document.getElementById('categoryFilter').addEventListener('change', e=>loadProducts(e.target.value));
 
-  // Регистрация пользователя
-  if(!localStorage.getItem('userRegistered')){
-    registerModal.show();
-    document.getElementById('registerForm').addEventListener('submit',async e=>{
-      e.preventDefault();
-      const form=e.target;
-      const data={name:form.name.value,email:form.email.value,phone:form.phone.value};
-      await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-      localStorage.setItem('userRegistered','true'); 
-      localStorage.setItem('userData',JSON.stringify(data));
-      registerModal.hide();
-    });
-  }
+if(!currentUser){
+  const modal = new bootstrap.Modal(document.getElementById('registerModal'));
+  modal.show();
+  document.getElementById('regBtn').addEventListener('click', async ()=>{
+    const name=document.getElementById('regName').value;
+    const email=document.getElementById('regEmail').value;
+    const phone=document.getElementById('regPhone').value;
+    if(!name||!email||!phone) return alert('Заполните все поля');
+    await fetch('/api/register',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,email,phone})});
+    localStorage.setItem('user',JSON.stringify({name,email,phone}));
+    modal.hide();
+    currentUser={name,email,phone};
+  });
+}
 
-  // --- Админские действия ---
-  const isAdmin = document.getElementById('adminControls').style.display==='flex';
-  if(isAdmin){
-    document.getElementById('addCategoryBtn').onclick=()=>{document.getElementById('categoryModalTitle').textContent='Добавить категорию'; document.getElementById('categoryForm').reset(); categoryModal.show();};
-    document.getElementById('addProductBtn').onclick=()=>{document.getElementById('productModalTitle').textContent='Добавить товар'; document.getElementById('productForm').reset(); productModal.show();};
-    document.getElementById('editStoreBtn').onclick=async()=>{
-      const res = await fetch('/api/store_info'); const store = await res.json();
-      const form = document.getElementById('storeForm');
-      form.name.value=store.name||''; form.inn.value=store.inn||''; form.address.value=store.address||''; form.email.value=store.email||''; form.phone.value=store.phone||'';
-      storeModal.show();
-    };
-
-    // Добавление категории
-    document.getElementById('categoryForm').addEventListener('submit',async e=>{
-      e.preventDefault();
-      const form = e.target;
-      const data={name:form.name.value};
-      await fetch('/api/categories',{method:'POST', headers:{'x-admin-token':ADMIN_TOKEN,'Content-Type':'application/json'},body:JSON.stringify(data)});
-      categoryModal.hide(); loadCategories();
-    });
-
-    // Добавление товара
-    document.getElementById('productForm').addEventListener('submit', async e=>{
-      e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
-      await fetch('/api/products',{method:'POST', headers:{'x-admin-token':ADMIN_TOKEN},body:formData});
-      productModal.hide();
-      loadProducts();
-    });
-
-    // Редактирование магазина
-    document.getElementById('storeForm').addEventListener('submit',async e=>{
-      e.preventDefault();
-      const form=e.target;
-      const data={name:form.name.value,inn:form.inn.value,address:form.address.value,email:form.email.value,phone:form.phone.value};
-      await fetch('/api/store_info',{method:'POST',headers:{'x-admin-token':ADMIN_TOKEN,'Content-Type':'application/json'},body:JSON.stringify(data)});
-      storeModal.hide(); loadStoreInfo();
-    });
-  }
-});
+loadStoreInfo(); loadCategories(); loadProducts();
 </script>
 </body>
 </html>
