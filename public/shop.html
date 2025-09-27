@@ -2,13 +2,14 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Магазин</title>
+  <title>🛍️ Наш магазин</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background: #f8f9fa; }
-    .card img { object-fit: cover; height: 180px; }
+    .card img { object-fit: cover; height: 200px; }
   </style>
 </head>
 <body>
@@ -17,7 +18,7 @@
     <div id="products" class="row g-4"></div>
   </div>
 
-  <!-- Модалка оплаты -->
+  <!-- Модалка выбора оплаты -->
   <div class="modal fade" id="payModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -32,16 +33,24 @@
     </div>
   </div>
 
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
   <script>
     const productsEl = document.getElementById('products');
     const paymentMethodsEl = document.getElementById('paymentMethods');
     let selectedProduct = null;
 
-    // Загрузка товаров
+    // Загружаем товары
     async function loadProducts() {
       const res = await fetch('/api/products');
       const products = await res.json();
+
+      if (products.length === 0) {
+        productsEl.innerHTML = `<p class="text-center text-muted">Товары пока не добавлены.</p>`;
+        return;
+      }
+
       productsEl.innerHTML = products.map(p => `
         <div class="col-md-4">
           <div class="card shadow-sm">
@@ -56,16 +65,18 @@
       `).join('');
     }
 
-    // Покупка товара
+    // Нажали «Купить»
     async function buy(productId) {
       selectedProduct = productId;
       const res = await fetch('/api/payments');
       const methods = await res.json();
+
       paymentMethodsEl.innerHTML = methods.filter(m => m.enabled).map(m => `
         <button class="list-group-item list-group-item-action" onclick="pay('${m.id}')">
           ${m.name}
         </button>
       `).join('');
+
       const modal = new bootstrap.Modal(document.getElementById('payModal'));
       modal.show();
     }
@@ -79,10 +90,11 @@
           product_id: selectedProduct,
           amount: 1,
           payment_method_id: paymentId,
-          customer_contact: 'TelegramUser'
+          customer_contact: "telegram_user"
         })
       });
-      alert('✅ Заказ создан!');
+      alert("✅ Заказ создан! Администратор свяжется с вами.");
+      bootstrap.Modal.getInstance(document.getElementById('payModal')).hide();
     }
 
     loadProducts();
