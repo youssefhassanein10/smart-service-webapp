@@ -13,7 +13,7 @@
 </header>
 
 <div class="container py-4">
-  <div class="d-flex justify-content-between mb-3">
+  <div id="adminControls" class="d-flex justify-content-between mb-3">
     <button class="btn btn-success btn-sm" id="addCategoryBtn">Добавить категорию</button>
     <button class="btn btn-success btn-sm" id="addProductBtn">Добавить товар</button>
     <button class="btn btn-secondary btn-sm" id="editStoreBtn">Редактировать магазин</button>
@@ -109,6 +109,13 @@ const categoryModal = new bootstrap.Modal(document.getElementById('categoryModal
 const productModal = new bootstrap.Modal(document.getElementById('productModal'));
 const storeModal = new bootstrap.Modal(document.getElementById('storeModal'));
 
+// --- Админ ---
+let isAdmin = localStorage.getItem('isAdmin')==='true';
+if(!isAdmin){
+  document.getElementById('adminControls').style.display='none';
+}
+
+// --- Загрузка информации о магазине ---
 async function loadStoreInfo(){
   const res = await fetch('/api/store_info');
   const store = await res.json();
@@ -122,6 +129,7 @@ async function loadStoreInfo(){
   `;
 }
 
+// --- Категории ---
 async function loadCategories(){
   const res = await fetch('/api/categories');
   const categories = await res.json();
@@ -132,7 +140,6 @@ async function loadCategories(){
   allBtn.textContent = 'Все';
   allBtn.onclick = ()=>{selectedCategory=null; renderProducts();};
   nav.appendChild(allBtn);
-
   categories.forEach(cat=>{
     const btn = document.createElement('button');
     btn.className = 'btn btn-light btn-sm mx-1';
@@ -145,11 +152,12 @@ async function loadCategories(){
   select.innerHTML = '';
   categories.forEach(cat=>{
     const opt = document.createElement('option');
-    opt.value = cat.id; opt.textContent=cat.name;
+    opt.value = cat.id; opt.textContent = cat.name;
     select.appendChild(opt);
   });
 }
 
+// --- Товары ---
 async function loadProducts(){
   const res = await fetch('/api/products');
   allProducts = await res.json();
@@ -175,8 +183,7 @@ function renderProducts(){
             <p class="fw-bold">${p.price} ₽</p>
             <div class="d-flex justify-content-between">
               <button class="btn btn-primary btn-sm buy-btn">Купить</button>
-              <button class="btn btn-warning btn-sm edit-btn">Редактировать</button>
-              <button class="btn btn-danger btn-sm delete-btn">Удалить</button>
+              ${isAdmin?'<button class="btn btn-warning btn-sm edit-btn">Редактировать</button><button class="btn btn-danger btn-sm delete-btn">Удалить</button>':''}
             </div>
           </div>
         </div>
@@ -188,15 +195,18 @@ function renderProducts(){
       await fetch('/api/buy',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:userData,productId:p.id})});
       alert(`Товар "${p.title}" добавлен в корзину!`);
     };
-    card.querySelector('.edit-btn').onclick=()=>openProductModal(p);
-    card.querySelector('.delete-btn').onclick=async()=>{
-      await fetch(`/api/products/${p.id}`,{method:'DELETE'});
-      loadProducts();
-    };
+    if(isAdmin){
+      card.querySelector('.edit-btn').onclick=()=>openProductModal(p);
+      card.querySelector('.delete-btn').onclick=async()=>{
+        await fetch(`/api/products/${p.id}`,{method:'DELETE'});
+        loadProducts();
+      };
+    }
     container.appendChild(card);
   });
 }
 
+// --- Открытие модалки товара ---
 function openProductModal(product=null){
   const form = document.getElementById('productForm');
   form.reset();
@@ -211,10 +221,11 @@ function openProductModal(product=null){
   productModal.show();
 }
 
+// --- DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded',()=>{
   loadStoreInfo(); loadCategories(); loadProducts();
 
-  // регистрация
+  // регистрация обычного пользователя
   if(!localStorage.getItem('userRegistered')){
     registerModal.show();
     document.getElementById('registerForm').addEventListener('submit',async e=>{
@@ -227,51 +238,53 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   }
 
-  document.getElementById('addCategoryBtn').onclick=()=>{document.getElementById('categoryModalTitle').textContent='Добавить категорию'; document.getElementById('categoryForm').reset(); categoryModal.show();};
-  document.getElementById('addProductBtn').onclick=()=>openProductModal();
-  document.getElementById('editStoreBtn').onclick=async()=>{
-    const res = await fetch('/api/store_info'); const store = await res.json();
-    const form = document.getElementById('storeForm');
-    form.name.value=store.name||''; form.inn.value=store.inn||''; form.address.value=store.address||''; form.email.value=store.email||''; form.phone.value=store.phone||'';
-    storeModal.show();
-  };
+  if(isAdmin){
+    document.getElementById('addCategoryBtn').onclick=()=>{document.getElementById('categoryModalTitle').textContent='Добавить категорию'; document.getElementById('categoryForm').reset(); categoryModal.show();};
+    document.getElementById('addProductBtn').onclick=()=>openProductModal();
+    document.getElementById('editStoreBtn').onclick=async()=>{
+      const res = await fetch('/api/store_info'); const store = await res.json();
+      const form = document.getElementById('storeForm');
+      form.name.value=store.name||''; form.inn.value=store.inn||''; form.address.value=store.address||''; form.email.value=store.email||''; form.phone.value='';
+      storeModal.show();
+    };
 
-  document.getElementById('categoryForm').addEventListener('submit',async e=>{
-    e.preventDefault();
-    const form = e.target;
-    const data={name:form.name.value};
-    await fetch('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    categoryModal.hide(); loadCategories();
-  });
+    document.getElementById('categoryForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const form = e.target;
+      const data={name:form.name.value};
+      await fetch('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      categoryModal.hide(); loadCategories();
+    });
 
-  document.getElementById('productForm').addEventListener('submit', async e=>{
-    e.preventDefault();
-    const form = e.target;
-    const id = form.id.value;
-    const fileInput = form.image;
-    const formData = new FormData();
-    formData.append('title', form.title.value);
-    formData.append('description', form.description.value);
-    formData.append('price', form.price.value);
-    formData.append('category_id', form.category_id.value);
-    if(fileInput.files[0]) formData.append('image', fileInput.files[0]);
+    document.getElementById('productForm').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const form = e.target;
+      const id = form.id.value;
+      const fileInput = form.image;
+      const formData = new FormData();
+      formData.append('title', form.title.value);
+      formData.append('description', form.description.value);
+      formData.append('price', form.price.value);
+      formData.append('category_id', form.category_id.value);
+      if(fileInput.files[0]) formData.append('image', fileInput.files[0]);
 
-    if(id){ // редактирование
-      await fetch(`/api/products/${id}`,{method:'PUT',body:formData});
-    }else{ // добавление
-      await fetch('/api/products',{method:'POST',body:formData});
-    }
-    productModal.hide();
-    loadProducts();
-  });
+      if(id){ // редактирование
+        await fetch(`/api/products/${id}`,{method:'PUT',body:formData});
+      }else{ // добавление
+        await fetch('/api/products',{method:'POST',body:formData});
+      }
+      productModal.hide();
+      loadProducts();
+    });
 
-  document.getElementById('storeForm').addEventListener('submit',async e=>{
-    e.preventDefault();
-    const form=e.target;
-    const data={name:form.name.value,inn:form.inn.value,address:form.address.value,email:form.email.value,phone:form.phone.value};
-    await fetch('/api/store_info',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    storeModal.hide(); loadStoreInfo();
-  });
+    document.getElementById('storeForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const form=e.target;
+      const data={name:form.name.value,inn:form.inn.value,address:form.address.value,email:form.email.value,phone:form.phone.value};
+      await fetch('/api/store_info',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      storeModal.hide(); loadStoreInfo();
+    });
+  }
 
 });
 </script>
