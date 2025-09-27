@@ -94,21 +94,22 @@ async function saveService() {
         submitButton.textContent = 'Добавление...';
         submitButton.disabled = true;
 
+        // Создаем FormData для отправки файла
         const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
 
         // Валидация
-        if (!data.article || !data.name || !data.price) {
+        const article = formData.get('article');
+        const name = formData.get('name');
+        const price = formData.get('price');
+
+        if (!article || !name || !price) {
             alert('⚠️ Заполните артикул, название и цену');
             return;
         }
 
         const response = await fetch('/api/services', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
+            body: formData  // Отправляем как FormData для поддержки файлов
         });
 
         const result = await response.json();
@@ -118,6 +119,7 @@ async function saveService() {
             form.reset();
             const preview = document.querySelector('.image-preview');
             if (preview) preview.innerHTML = '';
+            console.log('✅ Услуга создана:', result);
         } else {
             throw new Error(result.error || `Ошибка ${response.status}`);
         }
@@ -142,13 +144,20 @@ function previewImage(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px;">`;
+            preview.innerHTML = `
+                <div style="text-align: center;">
+                    <img src="${e.target.result}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px;">
+                    <div style="margin-top: 10px; color: #666;">Предпросмотр изображения</div>
+                </div>
+            `;
         }
         reader.onerror = function(error) {
             console.error('❌ Ошибка загрузки изображения:', error);
             alert('Ошибка загрузки изображения');
         }
         reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.innerHTML = '';
     }
 }
 
@@ -216,6 +225,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const serviceForm = document.getElementById('serviceForm');
     if (serviceForm) {
+        // Устанавливаем enctype для формы
+        serviceForm.setAttribute('enctype', 'multipart/form-data');
+        
         serviceForm.addEventListener('submit', function(e) {
             e.preventDefault();
             saveService();
