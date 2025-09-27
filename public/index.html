@@ -102,6 +102,8 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         
         .service-card::before {
@@ -154,6 +156,7 @@
             color: #5a6c7d;
             line-height: 1.6;
             margin: 15px 0;
+            flex-grow: 1;
         }
         
         .service-category {
@@ -164,6 +167,196 @@
             font-size: 12px;
             display: inline-block;
             margin-top: 10px;
+        }
+        
+        .buy-button {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: auto;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+        
+        .buy-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+            background: linear-gradient(135deg, #229954, #27ae60);
+        }
+        
+        .buy-button:active {
+            transform: translateY(0);
+        }
+        
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .modal h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .payment-method {
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .payment-method:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+        
+        .payment-method.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+        
+        .payment-method .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .payment-instructions {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            white-space: pre-line;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .contact-admin {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .contact-admin a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .contact-admin a:hover {
+            text-decoration: underline;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-buttons button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
         }
         
         .loading {
@@ -220,6 +413,16 @@
             .shop-details-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .modal-content {
+                margin: 10% auto;
+                width: 95%;
+                padding: 20px;
+            }
+            
+            .payment-methods {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -243,7 +446,20 @@
         </div>
     </div>
 
+    <!-- Модальное окно покупки -->
+    <div id="buyModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalContent">
+                <!-- Контент будет динамически загружаться -->
+            </div>
+        </div>
+    </div>
+
     <script>
+        let currentService = null;
+        let paymentMethods = [];
+
         // Функция загрузки данных магазина
         async function loadShopData() {
             try {
@@ -288,12 +504,18 @@
                     <div class="service-grid">
                         ${services.map(service => `
                             <div class="service-card">
-                                ${service.image_url ? `<img src="${service.image_url}" class="service-image" alt="${service.name}" onerror="this.style.display='none'">` : '<div style="height: 200px; background: #f8f9fa; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #7f8c8d; margin-bottom: 20px;">🖼️ Нет изображения</div>'}
+                                ${service.image_url ? 
+                                    `<img src="${service.image_url}" class="service-image" alt="${service.name}" onerror="this.style.display='none'">` : 
+                                    '<div style="height: 200px; background: #f8f9fa; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #7f8c8d; margin-bottom: 20px;">🖼️ Нет изображения</div>'
+                                }
                                 <div class="service-article">#${service.article}</div>
                                 <h3>${service.name}</h3>
                                 ${service.description ? `<div class="service-description">${service.description}</div>` : ''}
                                 <div class="service-price">${parseFloat(service.price).toFixed(2)} руб.</div>
                                 ${service.category_name ? `<div class="service-category">${service.category_name}</div>` : ''}
+                                <button class="buy-button" onclick="openBuyModal(${service.id}, '${service.name}', ${service.price})">
+                                    🛒 Купить за ${parseFloat(service.price).toFixed(2)} руб.
+                                </button>
                             </div>
                         `).join('')}
                     </div>
@@ -311,9 +533,168 @@
                 `;
             }
         }
-        
-        // Загружаем данные при старте
-        document.addEventListener('DOMContentLoaded', loadShopData);
+
+        // Функция открытия модального окна покупки
+        async function openBuyModal(serviceId, serviceName, servicePrice) {
+            currentService = { id: serviceId, name: serviceName, price: servicePrice };
+            
+            // Загружаем способы оплаты
+            if (paymentMethods.length === 0) {
+                const response = await fetch('/api/payment-methods');
+                paymentMethods = await response.json();
+            }
+            
+            const modalContent = `
+                <h2>🛒 Покупка услуги</h2>
+                <div class="form-group">
+                    <label>Услуга:</label>
+                    <input type="text" value="${serviceName}" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Стоимость:</label>
+                    <input type="text" value="${servicePrice.toFixed(2)} руб." readonly>
+                </div>
+                <div class="form-group">
+                    <label>Ваше имя:</label>
+                    <input type="text" id="customerName" placeholder="Введите ваше имя" required>
+                </div>
+                <div class="form-group">
+                    <label>Контакт для связи (Telegram/Email/Телефон):</label>
+                    <input type="text" id="customerContact" placeholder="@username или +79991234567" required>
+                </div>
+                
+                <h3>💳 Выберите способ оплаты</h3>
+                <div class="payment-methods" id="paymentMethods">
+                    ${paymentMethods.map(method => `
+                        <div class="payment-method" onclick="selectPaymentMethod('${method.id}')" data-method='${JSON.stringify(method).replace(/'/g, "&#39;")}'>
+                            <div class="icon">${method.icon}</div>
+                            <div><strong>${method.name}</strong></div>
+                            <div style="font-size: 12px; color: #666;">${method.details}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div id="paymentInstructions" style="display: none;">
+                    <h3>📋 Инструкция по оплате</h3>
+                    <div class="payment-instructions" id="instructionsContent"></div>
+                    <div class="modal-buttons">
+                        <button class="btn-secondary" onclick="cancelPayment()">❌ Отменить</button>
+                        <button class="btn-success" onclick="completePayment()">✅ Завершить оплату</button>
+                    </div>
+                </div>
+                
+                <div id="successMessage" style="display: none;">
+                    <div class="success-message">
+                        <h3>🎉 Оплата завершена!</h3>
+                        <p>Ваш заказ успешно создан и ожидает подтверждения администратором.</p>
+                    </div>
+                    <div class="contact-admin">
+                        <p>Если возникнут проблемы, свяжитесь с администратором:</p>
+                        <p><a href="https://t.me/Paymentprosu" target="_blank">@Paymentprosu</a></p>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="btn-primary" onclick="closeModal()">Закрыть</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modalContent').innerHTML = modalContent;
+            document.getElementById('buyModal').style.display = 'block';
+        }
+
+        // Функция выбора способа оплаты
+        function selectPaymentMethod(methodId) {
+            // Сбрасываем выделение у всех методов
+            document.querySelectorAll('.payment-method').forEach(method => {
+                method.classList.remove('selected');
+            });
+            
+            // Выделяем выбранный метод
+            const selectedMethod = document.querySelector(`[data-method*="${methodId}"]`);
+            selectedMethod.classList.add('selected');
+            
+            // Получаем данные метода
+            const methodData = JSON.parse(selectedMethod.getAttribute('data-method').replace(/&#39;/g, "'"));
+            
+            // Показываем инструкции
+            document.getElementById('instructionsContent').textContent = methodData.instructions;
+            document.getElementById('paymentInstructions').style.display = 'block';
+            
+            // Сохраняем выбранный метод
+            currentService.paymentMethod = methodData;
+        }
+
+        // Функция завершения оплаты
+        async function completePayment() {
+            const customerName = document.getElementById('customerName').value;
+            const customerContact = document.getElementById('customerContact').value;
+            
+            if (!customerName || !customerContact || !currentService.paymentMethod) {
+                alert('⚠️ Заполните все поля и выберите способ оплаты');
+                return;
+            }
+            
+            try {
+                const orderData = {
+                    service_id: currentService.id,
+                    service_name: currentService.name,
+                    service_price: currentService.price,
+                    customer_name: customerName,
+                    customer_contact: customerContact,
+                    payment_method: currentService.paymentMethod.name
+                };
+                
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData)
+                });
+                
+                if (response.ok) {
+                    // Показываем сообщение об успехе
+                    document.getElementById('paymentInstructions').style.display = 'none';
+                    document.getElementById('successMessage').style.display = 'block';
+                    console.log('✅ Заказ создан:', await response.json());
+                } else {
+                    throw new Error('Ошибка создания заказа');
+                }
+            } catch (error) {
+                console.error('❌ Ошибка:', error);
+                alert('❌ Ошибка при создании заказа: ' + error.message);
+            }
+        }
+
+        // Функция отмены оплаты
+        function cancelPayment() {
+            document.getElementById('paymentInstructions').style.display = 'none';
+            document.querySelectorAll('.payment-method').forEach(method => {
+                method.classList.remove('selected');
+            });
+        }
+
+        // Функция закрытия модального окна
+        function closeModal() {
+            document.getElementById('buyModal').style.display = 'none';
+            currentService = null;
+        }
+
+        // Обработчики событий
+        document.addEventListener('DOMContentLoaded', function() {
+            // Закрытие модального окна по клику на X
+            document.querySelector('.close').addEventListener('click', closeModal);
+            
+            // Закрытие модального окна по клику вне его
+            window.addEventListener('click', function(event) {
+                if (event.target === document.getElementById('buyModal')) {
+                    closeModal();
+                }
+            });
+            
+            // Загружаем данные при старте
+            loadShopData();
+        });
     </script>
 </body>
 </html>
