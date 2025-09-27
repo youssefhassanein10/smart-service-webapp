@@ -3,7 +3,6 @@ const fileUpload = require('express-fileupload');
 const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
-const { format } = require('date-fns');
 
 const app = express();
 
@@ -73,6 +72,29 @@ let memoryData = {
         }
     ]
 };
+
+// Функция для форматирования даты (замена date-fns)
+function formatDate(date, format = 'yyyy-MM-dd') {
+    if (!date) return '';
+    
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    
+    return format
+        .replace('yyyy', year)
+        .replace('MM', month)
+        .replace('dd', day)
+        .replace('HH', hours)
+        .replace('mm', minutes)
+        .replace('ss', seconds);
+}
 
 // Функция для сохранения загруженных изображений
 function saveUploadedImage(imageFile) {
