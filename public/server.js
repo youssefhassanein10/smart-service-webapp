@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -20,12 +19,8 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 // Настройка multer
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) { cb(null, uploadDir); },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const name = Date.now() + ext;
-    cb(null, name);
-  }
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage });
 
@@ -36,35 +31,10 @@ const db = new sqlite3.Database('./shop.db', err => {
 });
 
 db.serialize(()=>{
-  db.run(`CREATE TABLE IF NOT EXISTS store_info(
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    inn TEXT,
-    address TEXT,
-    email TEXT,
-    phone TEXT
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS categories(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS products(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT,
-    description TEXT,
-    price REAL,
-    image_url TEXT,
-    category_id INTEGER
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS users(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    email TEXT,
-    phone TEXT
-  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS store_info(id INTEGER PRIMARY KEY, name TEXT, inn TEXT, address TEXT, email TEXT, phone TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, price REAL, image_url TEXT, category_id INTEGER)`);
+  db.run(`CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, phone TEXT)`);
 });
 
 // --- API ---
@@ -78,7 +48,7 @@ app.get('/api/store_info', (req,res)=>{
 
 app.post('/api/store_info', (req,res)=>{
   const {name,inn,address,email,phone} = req.body;
-  db.run(`INSERT OR REPLACE INTO store_info(id,name,inn,address,email,phone) VALUES(1,?,?,?,?,?,?)`,
+  db.run(`INSERT OR REPLACE INTO store_info(id,name,inn,address,email,phone) VALUES(1,?,?,?,?,?)`,
     [name,inn,address,email,phone], err=>{
       if(err) return res.status(500).json({error:err});
       res.json({success:true});
@@ -109,7 +79,6 @@ app.get('/api/products', (req,res)=>{
   });
 });
 
-// Добавление товара с фото
 app.post('/api/products', upload.single('image'), (req,res)=>{
   const {title,description,price,category_id} = req.body;
   let image_url = '';
@@ -121,7 +90,6 @@ app.post('/api/products', upload.single('image'), (req,res)=>{
     });
 });
 
-// Редактирование товара с фото
 app.put('/api/products/:id', upload.single('image'), (req,res)=>{
   const {title,description,price,category_id} = req.body;
   const {id} = req.params;
