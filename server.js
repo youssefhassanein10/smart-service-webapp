@@ -1,164 +1,95 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const multer = require('multer');
+const sqlite3 = require('sqlite3').verbose();
+const bodyParser = require('body-parser');
 const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Секретный токен администратора
-const ADMIN_TOKEN = 'SUPER_SECRET_TOKEN';
+// Папка для загрузки файлов
+const upload = multer({ dest: path.join(__dirname, 'uploads/') });
 
-app.use(cors());
+// Раздача статических файлов
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname))); // отдаём все файлы из корня проекта
 
-// Папка для фото
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
-const upload = multer({ storage });
-
-// --- SQLite ---
-const db = new sqlite3.Database('./shop.db', err => {
-  if(err) console.error(err);
-  else console.log('Connected to SQLite');
+// База данных
+const db = new sqlite3.Database('./database.db', (err) => {
+    if (err) console.error(err);
+    else console.log('Connected to SQLite database.');
 });
 
-db.serialize(()=>{
-  db.run(`CREATE TABLE IF NOT EXISTS store_info(id INTEGER PRIMARY KEY, name TEXT, inn TEXT, address TEXT, email TEXT, phone TEXT)`);
-  db.run(`CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`);
-  db.run(`CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, price REAL, image_url TEXT, category_id INTEGER)`);
-  db.run(`CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, phone TEXT)`);
+// Создание таблиц, если их нет
+db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        image TEXT
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        price REAL,
+        category_id INTEGER,
+        image TEXT,
+        FOREIGN KEY(category_id) REFERENCES categories(id)
+    )`);
 });
 
-// --- Проверка администратора ---
-app.get('/api/is_admin', (req,res)=>{
-  const token = req.headers['x-admin-token'];
-  if(token===ADMIN_TOKEN) res.json({admin:true});
-  else res.json({admin:false});
+// Маршруты для HTML
+app.get('/admin.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// --- Store info ---
-app.get('/api/store_info', (req,res)=>{
-  db.get(`SELECT * FROM store_info WHERE id=1`, (err,row)=>{
-    if(err) return res.status(500).json({error:err});
-    res.json(row || {});
-  });
+app.get('/shop.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'shop.html'));
 });
 
-app.post('/api/store_info', (req,res)=>{
-  const token = req.headers['x-admin-token'];
-  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
-  const {name,inn,address,email,phone} = req.body;
-  db.run(`INSERT OR REPLACE INTO store_info(id,name,inn,address,email,phone) VALUES(1,?,?,?,?,?)`,
-    [name,inn,address,email,phone], err=>{
-      if(err) return res.status(500).json({error:err});
-      res.json({success:true});
+// Добавление категории
+app.post('/add-category', upload.single('image'), (req, res) => {
+    const { name } = req.body;
+    const image = req.file ? req.file.filename : null;
+    db.run(`INSERT INTO categories (name, image) VALUES (?, ?)`, [name, image], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID, name, image });
     });
 });
 
-// --- Categories ---
-app.get('/api/categories', (req,res)=>{
-  db.all(`SELECT * FROM categories`, (err,rows)=>{
-    if(err) return res.status(500).json({error:err});
-    res.json(rows);
-  });
+// Добавление товара
+app.post('/add-product', upload.single('image'), (req, res) => {
+    const { name, price, category_id } = req.body;
+    const image = req.file ? req.file.filename : null;
+    db.run(`INSERT INTO products (name, price, category_id, image) VALUES (?, ?, ?, ?)`,
+        [name, price, category_id, image], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID, name, price, category_id, image });
+        });
 });
 
-app.post('/api/categories', (req,res)=>{
-  const token = req.headers['x-admin-token'];
-  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
-  const {name} = req.body;
-  db.run(`INSERT INTO categories(name) VALUES(?)`, [name], err=>{
-    if(err) return res.status(500).json({error:err});
-    res.json({success:true});
-  });
-});
-
-// --- Products ---
-app.get('/api/products', (req,res)=>{
-  db.all(`SELECT * FROM products`, (err,rows)=>{
-    if(err) return res.status(500).json({error:err});
-    res.json(rows);
-  });
-});
-
-app.post('/api/products', upload.single('image'), (req,res)=>{
-  const token = req.headers['x-admin-token'];
-  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
-  const {title,description,price,category_id} = req.body;
-  let image_url = '';
-  if(req.file) image_url = '/uploads/' + req.file.filename;
-  db.run(`INSERT INTO products(title,description,price,image_url,category_id) VALUES(?,?,?,?,?)`,
-    [title,description,price,image_url,category_id], err=>{
-      if(err) return res.status(500).json({error:err});
-      res.json({success:true});
+// Получение категорий
+app.get('/categories', (req, res) => {
+    db.all(`SELECT * FROM categories`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
     });
 });
 
-app.put('/api/products/:id', upload.single('image'), (req,res)=>{
-  const token = req.headers['x-admin-token'];
-  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
-  const {title,description,price,category_id} = req.body;
-  const {id} = req.params;
-  if(req.file){
-    const image_url = '/uploads/' + req.file.filename;
-    db.run(`UPDATE products SET title=?,description=?,price=?,image_url=?,category_id=? WHERE id=?`,
-      [title,description,price,image_url,category_id,id], err=>{
-        if(err) return res.status(500).json({error:err});
-        res.json({success:true});
-      });
-  } else {
-    db.run(`UPDATE products SET title=?,description=?,price=?,category_id=? WHERE id=?`,
-      [title,description,price,category_id,id], err=>{
-        if(err) return res.status(500).json({error:err});
-        res.json({success:true});
-      });
-  }
+// Получение товаров
+app.get('/products', (req, res) => {
+    db.all(`SELECT * FROM products`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
 });
 
-app.delete('/api/products/:id', (req,res)=>{
-  const token = req.headers['x-admin-token'];
-  if(token!==ADMIN_TOKEN) return res.status(403).json({error:'Forbidden'});
-  const {id} = req.params;
-  db.run(`DELETE FROM products WHERE id=?`, [id], err=>{
-    if(err) return res.status(500).json({error:err});
-    res.json({success:true});
-  });
-});
+// Раздача загруженных файлов
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// --- Users ---
-app.post('/api/register', (req,res)=>{
-  const {name,email,phone} = req.body;
-  db.run(`INSERT INTO users(name,email,phone) VALUES(?,?,?)`, [name,email,phone], err=>{
-    if(err) return res.status(500).json({error:err});
-    res.json({success:true});
-  });
+// Запуск сервера
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
-
-// --- Buy ---
-app.post('/api/buy', (req,res)=>{
-  const {user, productId} = req.body;
-  console.log(`User ${user.name} купил товар ${productId}`);
-  res.json({success:true});
-});
-
-// --- Раздача HTML ---
-app.get('/admin.html', (req,res)=>{
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-app.get('/', (req,res)=>{
-  res.sendFile(path.join(__dirname, 'shop.html'));
-});
-
-// --- Запуск сервера ---
-app.listen(PORT, ()=>console.log(`Server running on port ${PORT}`));
