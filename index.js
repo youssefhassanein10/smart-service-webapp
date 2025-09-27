@@ -2,161 +2,146 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
+const bodyParser = require('body-parser');
 
-const ADMIN_TOKEN = 'SUPER_SECRET_TOKEN';
+const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_TOKEN = 'SUPER_SECRET_TOKEN';
 
-(async () => {
-  const app = express();
-  app.use(cors());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-  // Папка для фото
-  const uploadsDir = path.join(__dirname, 'public/uploads');
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+// --- Upload setup ---
+const uploadDir = path.join(__dirname, 'public/uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadsDir),
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-  });
-  const upload = multer({ storage });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage });
 
-  // --- База SQLite ---
-  const dbFile = path.join(__dirname, 'shop.db');
-  const db = await open({ filename: dbFile, driver: sqlite3.Database });
+// --- SQLite setup ---
+const db = new sqlite3.Database('./shop.db', err => {
+  if(err) console.error(err);
+  else console.log('Connected to SQLite');
+});
 
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS store_info(
-      id INTEGER PRIMARY KEY,
-      name TEXT,
-      inn TEXT,
-      address TEXT,
-      email TEXT,
-      phone TEXT
-    );
-    CREATE TABLE IF NOT EXISTS categories(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT
-    );
-    CREATE TABLE IF NOT EXISTS products(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT,
-      description TEXT,
-      price REAL,
-      image_url TEXT,
-      category_id INTEGER
-    );
-    CREATE TABLE IF NOT EXISTS users(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT,
-      email TEXT,
-      phone TEXT
-    );
-  `);
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS store_info(id INTEGER PRIMARY KEY, name TEXT, inn TEXT, address TEXT, email TEXT, phone TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, price REAL, category_id INTEGER, image_url TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, phone TEXT)`);
+});
 
-  // --- Middleware для проверки админа ---
-  function requireAdmin(req, res, next){
-    const token = req.headers['x-admin-token'] || req.body.admin_token;
-    if(token === ADMIN_TOKEN) return next();
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+// --- Middleware for admin ---
+function requireAdmin(req, res, next){
+  const token = req.headers['x-admin-token'];
+  if(token !== ADMIN_TOKEN) return res.status(403).json({ error: 'Forbidden' });
+  next();
+}
 
-  // --- API Store Info ---
-  app.get('/api/store_info', async (req,res)=>{
-    const row = await db.get(`SELECT * FROM store_info WHERE id=1`);
+// --- Store info ---
+app.get('/api/store_info', (req,res)=>{
+  db.get(`SELECT * FROM store_info WHERE id=1`, (err,row)=>{
+    if(err) return res.status(500).json({error:err});
     res.json(row || {});
   });
+});
 
-  app.post('/api/store_info', requireAdmin, async (req,res)=>{
-    const {name,inn,address,email,phone} = req.body;
-    await db.run(`INSERT OR REPLACE INTO store_info(id,name,inn,address,email,phone) VALUES(1,?,?,?,?,?)`,
-      [name,inn,address,email,phone]);
-    res.json({ success:true });
-  });
+app.post('/api/store_info', requireAdmin, (req,res)=>{
+  const {name, inn, address, email, phone} = req.body;
+  db.run(`INSERT OR REPLACE INTO store_info(id,name,inn,address,email,phone) VALUES(1,?,?,?,?,?)`,
+    [name, inn, address, email, phone], err=>{
+      if(err) return res.status(500).json({error:err});
+      res.json({success:true});
+    });
+});
 
-  // --- API Categories ---
-  app.get('/api/categories', async (req,res)=>{
-    const rows = await db.all(`SELECT * FROM categories`);
+// --- Categories ---
+app.get('/api/categories', (req,res)=>{
+  db.all(`SELECT * FROM categories`, (err,rows)=>{
+    if(err) return res.status(500).json({error:err});
     res.json(rows);
   });
+});
 
-  app.post('/api/categories', requireAdmin, async (req,res)=>{
-    const {name} = req.body;
-    await db.run(`INSERT INTO categories(name) VALUES(?)`, [name]);
-    res.json({ success:true });
+app.post('/api/categories', requireAdmin, (req,res)=>{
+  const {name} = req.body;
+  db.run(`INSERT INTO categories(name) VALUES(?)`, [name], err=>{
+    if(err) return res.status(500).json({error:err});
+    res.json({success:true});
   });
+});
 
-  app.delete('/api/categories/:id', requireAdmin, async (req,res)=>{
-    const {id} = req.params;
-    await db.run(`DELETE FROM categories WHERE id=?`, [id]);
-    res.json({ success:true });
+app.delete('/api/categories/:id', requireAdmin, (req,res)=>{
+  db.run(`DELETE FROM categories WHERE id=?`, [req.params.id], err=>{
+    if(err) return res.status(500).json({error:err});
+    res.json({success:true});
   });
+});
 
-  // --- API Products ---
-  app.get('/api/products', async (req,res)=>{
-    const rows = await db.all(`SELECT * FROM products`);
+// --- Products ---
+app.get('/api/products', (req,res)=>{
+  db.all(`SELECT * FROM products`, (err,rows)=>{
+    if(err) return res.status(500).json({error:err});
     res.json(rows);
   });
+});
 
-  app.post('/api/products', requireAdmin, upload.single('image'), async (req,res)=>{
-    const {title,description,price,category_id} = req.body;
-    let image_url = req.file ? '/uploads/' + req.file.filename : '';
-    await db.run(`INSERT INTO products(title,description,price,image_url,category_id) VALUES(?,?,?,?,?)`,
-      [title,description,price,image_url,category_id]);
-    res.json({ success:true });
+// Добавление товара с фото
+app.post('/api/products', requireAdmin, upload.single('image'), (req,res)=>{
+  const { title, description, price, category_id } = req.body;
+  let image_url = '';
+  if(req.file) image_url = '/uploads/' + req.file.filename;
+  db.run(`INSERT INTO products(title,description,price,category_id,image_url) VALUES(?,?,?,?,?)`,
+    [title, description, price, category_id, image_url], err=>{
+      if(err) return res.status(500).json({error:err});
+      res.json({success:true});
+    });
+});
+
+// Редактирование товара
+app.put('/api/products/:id', requireAdmin, upload.single('image'), (req,res)=>{
+  const { title, description, price, category_id } = req.body;
+  const id = req.params.id;
+  if(req.file){
+    const image_url = '/uploads/' + req.file.filename;
+    db.run(`UPDATE products SET title=?,description=?,price=?,category_id=?,image_url=? WHERE id=?`,
+      [title, description, price, category_id, image_url, id], err=>{
+        if(err) return res.status(500).json({error:err});
+        res.json({success:true});
+      });
+  } else {
+    db.run(`UPDATE products SET title=?,description=?,price=?,category_id=? WHERE id=?`,
+      [title, description, price, category_id, id], err=>{
+        if(err) return res.status(500).json({error:err});
+        res.json({success:true});
+      });
+  }
+});
+
+// Удаление товара
+app.delete('/api/products/:id', requireAdmin, (req,res)=>{
+  db.run(`DELETE FROM products WHERE id=?`, [req.params.id], err=>{
+    if(err) return res.status(500).json({error:err});
+    res.json({success:true});
   });
+});
 
-  app.put('/api/products/:id', requireAdmin, upload.single('image'), async (req,res)=>{
-    const {title,description,price,category_id} = req.body;
-    const {id} = req.params;
-    if(req.file){
-      const image_url = '/uploads/' + req.file.filename;
-      await db.run(`UPDATE products SET title=?,description=?,price=?,category_id=?,image_url=? WHERE id=?`,
-        [title,description,price,category_id,image_url,id]);
-    } else {
-      await db.run(`UPDATE products SET title=?,description=?,price=?,category_id=? WHERE id=?`,
-        [title,description,price,category_id,id]);
-    }
-    res.json({ success:true });
+// --- Users ---
+app.post('/api/register', (req,res)=>{
+  const {name,email,phone} = req.body;
+  db.run(`INSERT INTO users(name,email,phone) VALUES(?,?,?)`, [name,email,phone], err=>{
+    if(err) return res.status(500).json({error:err});
+    res.json({success:true});
   });
+});
 
-  app.delete('/api/products/:id', requireAdmin, async (req,res)=>{
-    const {id} = req.params;
-    await db.run(`DELETE FROM products WHERE id=?`, [id]);
-    res.json({ success:true });
-  });
+// --- Serve HTML ---
+app.get('/', (req,res)=>res.sendFile(path.join(__dirname,'public','shop.html')));
+app.get('*', (req,res)=>res.sendFile(path.join(__dirname,'public','shop.html')));
 
-  // --- API Users ---
-  app.get('/api/users', requireAdmin, async (req,res)=>{
-    const rows = await db.all(`SELECT * FROM users`);
-    res.json(rows);
-  });
-
-  app.post('/api/register', async (req,res)=>{
-    const {name,email,phone} = req.body;
-    await db.run(`INSERT INTO users(name,email,phone) VALUES(?,?,?)`, [name,email,phone]);
-    res.json({ success:true });
-  });
-
-  // --- API Buy (для MiniApp) ---
-  app.post('/api/buy', async (req,res)=>{
-    const {user,productId} = req.body;
-    console.log(`User ${user.name} купил товар ${productId}`);
-    res.json({ success:true });
-  });
-
-  // --- Статика и фото ---
-  app.use('/uploads', express.static(uploadsDir));
-  app.use(express.static(path.join(__dirname, 'public')));
-
-  // --- SPA fallback ---
-  app.get('*', (req,res)=>{
-    res.sendFile(path.join(__dirname, 'public','shop.html'));
-  });
-
-  app.listen(PORT, ()=>console.log(`Server running: http://localhost:${PORT}`));
-})();
+app.listen(PORT, ()=>console.log(`Server running on http://localhost:${PORT}`));
