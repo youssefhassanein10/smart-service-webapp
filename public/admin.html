@@ -37,9 +37,8 @@ img { max-width: 100px; }
 </table>
 
 <script>
-// Подгружаем категории
 async function loadCategories() {
-  const res = await fetch('/categories');
+  const res = await fetch('/api/categories');
   const categories = await res.json();
   const tbody = document.querySelector('#categoriesTable tbody');
   tbody.innerHTML = '';
@@ -51,9 +50,8 @@ async function loadCategories() {
   });
 }
 
-// Подгружаем товары
 async function loadProducts() {
-  const res = await fetch('/products');
+  const res = await fetch('/api/products');
   const products = await res.json();
   const tbody = document.querySelector('#productsTable tbody');
   tbody.innerHTML = '';
@@ -69,11 +67,10 @@ async function loadProducts() {
   });
 }
 
-// Добавление категории
 document.getElementById('addCategoryBtn').addEventListener('click', async () => {
   const name = document.getElementById('categoryName').value.trim();
   if (!name) return alert('Введите название категории');
-  const res = await fetch('/add-category', {
+  const res = await fetch('/api/add-category', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name })
@@ -86,13 +83,11 @@ document.getElementById('addCategoryBtn').addEventListener('click', async () => 
   }
 });
 
-// Добавление товара
 document.getElementById('addProductBtn').addEventListener('click', async () => {
   const name = document.getElementById('productName').value.trim();
   const price = document.getElementById('productPrice').value.trim();
   const category_id = document.getElementById('productCategory').value;
   const imageFile = document.getElementById('productImage').files[0];
-
   if (!name || !price || !category_id) return alert('Заполните все поля');
 
   const formData = new FormData();
@@ -101,7 +96,7 @@ document.getElementById('addProductBtn').addEventListener('click', async () => {
   formData.append('category_id', category_id);
   if (imageFile) formData.append('image', imageFile);
 
-  const res = await fetch('/add-product', {
+  const res = await fetch('/api/add-product', {
     method: 'POST',
     body: formData
   });
@@ -116,7 +111,7 @@ document.getElementById('addProductBtn').addEventListener('click', async () => {
   }
 });
 
-// Загрузка данных при старте
+// Начальная загрузка
 loadCategories();
 loadProducts();
 </script>
