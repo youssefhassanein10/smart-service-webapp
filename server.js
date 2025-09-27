@@ -22,6 +22,21 @@ app.use((req, res, next) => {
 // Переменная для хранения подключения к БД
 let pool = null;
 
+// Данные в памяти (резервное хранилище)
+let memoryData = {
+    settings: {
+        shop_name: 'Smart Service',
+        holder_name: 'Иван Иванов',
+        inn: '1234567890',
+        registration_address: 'г. Москва, ул. Примерная, д. 1',
+        organization_address: 'г. Москва, ул. Примерная, д. 1',
+        email: 'example@email.com',
+        phone: '+79991234567'
+    },
+    services: [],
+    categories: []
+};
+
 // Функция подключения к базе данных
 async function connectDatabase() {
     try {
@@ -32,6 +47,8 @@ async function connectDatabase() {
             return null;
         }
 
+        console.log('🔗 Попытка подключения к базе данных...');
+        
         pool = new Pool({
             connectionString: databaseUrl,
             ssl: { rejectUnauthorized: false },
@@ -91,15 +108,16 @@ async function connectDatabase() {
         if (parseInt(result.rows[0].count) === 0) {
             await client.query(`
                 INSERT INTO shop_settings (shop_name, holder_name, inn, registration_address, organization_address, email, phone) 
-                VALUES ('Smart Service', 'Ваше имя', '1234567890', 'Адрес регистрации', 'Адрес организации', 'email@example.com', '+79991234567')
+                VALUES ('Smart Service', 'Иван Иванов', '1234567890', 'г. Москва, ул. Примерная, д. 1', 'г. Москва, ул. Примерная, д. 1', 'example@email.com', '+79991234567')
             `);
-            console.log('✅ Начальные данные добавлены');
+            console.log('✅ Начальные данные добавлены в БД');
         }
 
         client.release();
         return pool;
     } catch (error) {
         console.error('❌ Ошибка подключения к базе данных:', error.message);
+        console.log('⚠️ Используется резервное хранилище в памяти');
         return null;
     }
 }
@@ -109,27 +127,17 @@ async function connectDatabase() {
 // Получить настройки магазина
 app.get('/api/shop-settings', async (req, res) => {
     try {
-        if (!pool) {
-            return res.json({
-                shop_name: 'Smart Service',
-                holder_name: 'Ваше имя',
-                inn: '1234567890',
-                registration_address: 'Адрес регистрации',
-                organization_address: 'Адрес организации',
-                email: 'email@example.com',
-                phone: '+79991234567'
-            });
+        if (pool) {
+            const result = await pool.query('SELECT * FROM shop_settings ORDER BY id DESC LIMIT 1');
+            if (result.rows.length > 0) {
+                return res.json(result.rows[0]);
+            }
         }
-
-        const result = await pool.query('SELECT * FROM shop_settings ORDER BY id DESC LIMIT 1');
-        if (result.rows.length > 0) {
-            res.json(result.rows[0]);
-        } else {
-            res.json({});
-        }
+        // Возвращаем данные из памяти
+        res.json(memoryData.settings);
     } catch (error) {
         console.error('Ошибка получения настроек:', error);
-        res.status(500).json({ error: error.message });
+        res.json(memoryData.settings);
     }
 });
 
@@ -153,23 +161,34 @@ app.post('/api/shop-settings', async (req, res) => {
             return res.status(400).json({ error: 'Название магазина и имя держателя обязательны' });
         }
 
-        if (!pool) {
-            return res.status(500).json({ error: 'База данных не подключена' });
+        if (pool) {
+            // Сохраняем в базу данных
+            await pool.query('DELETE FROM shop_settings');
+            
+            const result = await pool.query(
+                `INSERT INTO shop_settings 
+                 (shop_name, holder_name, inn, registration_address, organization_address, email, phone) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                 RETURNING *`,
+                [shop_name, holder_name, inn, registration_address, organization_address, email, phone]
+            );
+
+            console.log('✅ Настройки сохранены в БД');
+            return res.json(result.rows[0]);
+        } else {
+            // Сохраняем в память
+            memoryData.settings = {
+                shop_name, 
+                holder_name, 
+                inn, 
+                registration_address, 
+                organization_address, 
+                email, 
+                phone
+            };
+            console.log('✅ Настройки сохранены в памяти');
+            res.json(memoryData.settings);
         }
-
-        // Удаляем старые настройки и добавляем новые
-        await pool.query('DELETE FROM shop_settings');
-        
-        const result = await pool.query(
-            `INSERT INTO shop_settings 
-             (shop_name, holder_name, inn, registration_address, organization_address, email, phone) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7) 
-             RETURNING *`,
-            [shop_name, holder_name, inn, registration_address, organization_address, email, phone]
-        );
-
-        console.log('✅ Настройки сохранены:', result.rows[0]);
-        res.json(result.rows[0]);
         
     } catch (error) {
         console.error('❌ Ошибка сохранения настроек:', error);
@@ -180,20 +199,19 @@ app.post('/api/shop-settings', async (req, res) => {
 // API для услуг
 app.get('/api/services', async (req, res) => {
     try {
-        if (!pool) {
-            return res.json([]);
+        if (pool) {
+            const result = await pool.query(`
+                SELECT s.*, c.name as category_name 
+                FROM services s 
+                LEFT JOIN categories c ON s.category_id = c.id 
+                WHERE s.is_active = true 
+                ORDER BY s.name
+            `);
+            return res.json(result.rows);
         }
-
-        const result = await pool.query(`
-            SELECT s.*, c.name as category_name 
-            FROM services s 
-            LEFT JOIN categories c ON s.category_id = c.id 
-            WHERE s.is_active = true 
-            ORDER BY s.name
-        `);
-        res.json(result.rows);
+        res.json(memoryData.services);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.json(memoryData.services);
     }
 });
 
@@ -201,18 +219,27 @@ app.post('/api/services', async (req, res) => {
     try {
         const { article, name, description, price, category_id } = req.body;
         
-        if (!pool) {
-            return res.status(500).json({ error: 'База данных не подключена' });
+        if (pool) {
+            const result = await pool.query(
+                `INSERT INTO services (article, name, description, price, category_id) 
+                 VALUES ($1, $2, $3, $4, $5) 
+                 RETURNING *`,
+                [article, name, description, parseFloat(price), category_id || null]
+            );
+            return res.json(result.rows[0]);
+        } else {
+            const newService = {
+                id: memoryData.services.length + 1,
+                article, 
+                name, 
+                description, 
+                price: parseFloat(price), 
+                category_id: category_id || null,
+                created_at: new Date()
+            };
+            memoryData.services.push(newService);
+            res.json(newService);
         }
-
-        const result = await pool.query(
-            `INSERT INTO services (article, name, description, price, category_id) 
-             VALUES ($1, $2, $3, $4, $5) 
-             RETURNING *`,
-            [article, name, description, parseFloat(price), category_id]
-        );
-
-        res.json(result.rows[0]);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -221,42 +248,47 @@ app.post('/api/services', async (req, res) => {
 // API для категорий
 app.get('/api/categories', async (req, res) => {
     try {
-        if (!pool) {
-            return res.json([]);
+        if (pool) {
+            const result = await pool.query('SELECT * FROM categories WHERE is_active = true ORDER BY sort_order, name');
+            return res.json(result.rows);
         }
-
-        const result = await pool.query('SELECT * FROM categories WHERE is_active = true ORDER BY sort_order, name');
-        res.json(result.rows);
+        res.json(memoryData.categories);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.json(memoryData.categories);
     }
 });
 
 // Диагностический маршрут
 app.get('/api/debug', async (req, res) => {
     try {
-        if (!pool) {
-            return res.json({ 
-                status: 'database_not_connected',
-                message: 'База данных не подключена',
-                databaseUrl: process.env.DATABASE_URL ? 'configured' : 'not_found'
-            });
+        const debugInfo = {
+            status: 'running',
+            timestamp: new Date().toISOString(),
+            database: {
+                hasDatabaseUrl: !!process.env.DATABASE_URL,
+                poolConnected: !!pool,
+                urlLength: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0
+            },
+            memory: {
+                settings: memoryData.settings,
+                servicesCount: memoryData.services.length,
+                categoriesCount: memoryData.categories.length
+            }
+        };
+
+        if (pool) {
+            const tables = await pool.query(`
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+            `);
+            debugInfo.database.tables = tables.rows.map(row => row.table_name);
+
+            const settingsCount = await pool.query('SELECT COUNT(*) FROM shop_settings');
+            debugInfo.database.settingsCount = parseInt(settingsCount.rows[0].count);
         }
 
-        const tables = await pool.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        `);
-
-        const settings = await pool.query('SELECT * FROM shop_settings');
-        
-        res.json({
-            status: 'connected',
-            tables: tables.rows.map(row => row.table_name),
-            settings_count: settings.rows.length,
-            current_settings: settings.rows[0] || null
-        });
+        res.json(debugInfo);
     } catch (error) {
         res.json({ 
             status: 'error',
@@ -278,14 +310,20 @@ app.get('/admin', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
+    console.log('🚀 Запуск сервера...');
+    console.log('🔍 Проверка окружения:');
+    console.log('PORT:', PORT);
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Есть (' + process.env.DATABASE_URL.length + ' символов)' : 'НЕТ!');
+    
     // Подключаемся к базе данных
     await connectDatabase();
     
     app.listen(PORT, () => {
-        console.log(`🚀 Сервер запущен на порту ${PORT}`);
+        console.log(`✅ Сервер запущен на порту ${PORT}`);
         console.log(`🏪 Магазин: http://localhost:${PORT}`);
         console.log(`⚙️ Админка: http://localhost:${PORT}/admin`);
         console.log(`🔧 Диагностика: http://localhost:${PORT}/api/debug`);
+        console.log(pool ? '✅ База данных подключена' : '⚠️ Используется резервное хранилище');
     });
 }
 
