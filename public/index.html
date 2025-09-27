@@ -18,6 +18,13 @@
             color: #333;
         }
         
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+        
         .shop-header {
             background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
@@ -193,28 +200,34 @@
             transform: translateY(0);
         }
         
-        /* Модальное окно */
+        /* Модальное окно - ИСПРАВЛЕННАЯ ВЕРСИЯ */
         .modal {
             display: none;
             position: fixed;
-            z-index: 1000;
+            z-index: 10000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(0,0,0,0.8);
             animation: fadeIn 0.3s ease;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         
         .modal-content {
             background-color: white;
-            margin: 5% auto;
-            padding: 30px;
+            margin: 20px auto;
+            padding: 25px;
             border-radius: 15px;
-            width: 90%;
+            width: 95%;
             max-width: 500px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
             animation: slideIn 0.3s ease;
+            position: relative;
+            min-height: auto;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         
         @keyframes slideIn {
@@ -229,6 +242,10 @@
             font-weight: bold;
             cursor: pointer;
             line-height: 1;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            z-index: 10001;
         }
         
         .close:hover {
@@ -240,6 +257,7 @@
             margin-bottom: 20px;
             border-bottom: 2px solid #3498db;
             padding-bottom: 10px;
+            padding-right: 30px;
         }
         
         .form-group {
@@ -259,11 +277,12 @@
             border: 2px solid #ecf0f1;
             border-radius: 8px;
             font-size: 16px;
+            box-sizing: border-box;
         }
         
         .payment-methods {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 10px;
             margin: 20px 0;
         }
@@ -271,10 +290,15 @@
         .payment-method {
             border: 2px solid #ecf0f1;
             border-radius: 8px;
-            padding: 15px;
+            padding: 15px 10px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         
         .payment-method:hover {
@@ -285,11 +309,17 @@
         .payment-method.selected {
             border-color: #3498db;
             background: #e3f2fd;
+            transform: scale(1.05);
         }
         
         .payment-method .icon {
-            font-size: 2em;
-            margin-bottom: 10px;
+            font-size: 1.8em;
+            margin-bottom: 8px;
+        }
+        
+        .payment-method .name {
+            font-size: 0.9em;
+            font-weight: 600;
         }
         
         .payment-instructions {
@@ -298,6 +328,10 @@
             border-radius: 8px;
             margin: 20px 0;
             white-space: pre-line;
+            font-size: 14px;
+            line-height: 1.4;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
         .success-message {
@@ -332,6 +366,7 @@
             display: flex;
             gap: 10px;
             margin-top: 20px;
+            flex-wrap: wrap;
         }
         
         .modal-buttons button {
@@ -342,6 +377,7 @@
             font-size: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
+            min-width: 120px;
         }
         
         .btn-primary {
@@ -395,6 +431,7 @@
             font-size: 1.2em;
         }
         
+        /* Специальные стили для Telegram Mini App */
         @media (max-width: 768px) {
             .shop-header h1 {
                 font-size: 2em;
@@ -405,7 +442,7 @@
             }
             
             .shop-info {
-                margin: 0 15px;
+                margin: 0 10px;
                 padding: 20px;
                 border-radius: 0 0 10px 10px;
             }
@@ -415,13 +452,54 @@
             }
             
             .modal-content {
-                margin: 10% auto;
+                margin: 10px auto;
                 width: 95%;
                 padding: 20px;
+                max-height: 85vh;
             }
             
             .payment-methods {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 8px;
+            }
+            
+            .payment-method {
+                padding: 12px 8px;
+                min-height: 70px;
+            }
+            
+            .payment-method .icon {
+                font-size: 1.5em;
+                margin-bottom: 5px;
+            }
+            
+            .payment-method .name {
+                font-size: 0.8em;
+            }
+            
+            .modal-buttons {
+                flex-direction: column;
+            }
+            
+            .modal-buttons button {
+                width: 100%;
+            }
+        }
+        
+        /* Для очень маленьких экранов */
+        @media (max-width: 360px) {
+            .modal-content {
+                padding: 15px;
+                margin: 5px auto;
+            }
+            
+            .payment-methods {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .form-group input, .form-group select {
+                padding: 10px;
+                font-size: 14px;
             }
         }
     </style>
@@ -446,7 +524,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно покупки -->
+    <!-- Модальное окно покупки - ИСПРАВЛЕННАЯ ВЕРСИЯ -->
     <div id="buyModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -513,7 +591,7 @@
                                 ${service.description ? `<div class="service-description">${service.description}</div>` : ''}
                                 <div class="service-price">${parseFloat(service.price).toFixed(2)} руб.</div>
                                 ${service.category_name ? `<div class="service-category">${service.category_name}</div>` : ''}
-                                <button class="buy-button" onclick="openBuyModal(${service.id}, '${service.name}', ${service.price})">
+                                <button class="buy-button" onclick="openBuyModal(${service.id}, '${service.name.replace(/'/g, "\\'")}', ${service.price})">
                                     🛒 Купить за ${parseFloat(service.price).toFixed(2)} руб.
                                 </button>
                             </div>
@@ -537,6 +615,9 @@
         // Функция открытия модального окна покупки
         async function openBuyModal(serviceId, serviceName, servicePrice) {
             currentService = { id: serviceId, name: serviceName, price: servicePrice };
+            
+            // Блокируем скролл основного контента
+            document.body.classList.add('modal-open');
             
             // Загружаем способы оплаты
             if (paymentMethods.length === 0) {
@@ -568,8 +649,7 @@
                     ${paymentMethods.map(method => `
                         <div class="payment-method" onclick="selectPaymentMethod('${method.id}')" data-method='${JSON.stringify(method).replace(/'/g, "&#39;")}'>
                             <div class="icon">${method.icon}</div>
-                            <div><strong>${method.name}</strong></div>
-                            <div style="font-size: 12px; color: #666;">${method.details}</div>
+                            <div class="name">${method.name}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -600,6 +680,12 @@
             
             document.getElementById('modalContent').innerHTML = modalContent;
             document.getElementById('buyModal').style.display = 'block';
+            
+            // Фокусируемся на первом поле ввода
+            setTimeout(() => {
+                const nameInput = document.getElementById('customerName');
+                if (nameInput) nameInput.focus();
+            }, 300);
         }
 
         // Функция выбора способа оплаты
@@ -611,17 +697,27 @@
             
             // Выделяем выбранный метод
             const selectedMethod = document.querySelector(`[data-method*="${methodId}"]`);
-            selectedMethod.classList.add('selected');
-            
-            // Получаем данные метода
-            const methodData = JSON.parse(selectedMethod.getAttribute('data-method').replace(/&#39;/g, "'"));
-            
-            // Показываем инструкции
-            document.getElementById('instructionsContent').textContent = methodData.instructions;
-            document.getElementById('paymentInstructions').style.display = 'block';
-            
-            // Сохраняем выбранный метод
-            currentService.paymentMethod = methodData;
+            if (selectedMethod) {
+                selectedMethod.classList.add('selected');
+                
+                // Получаем данные метода
+                const methodData = JSON.parse(selectedMethod.getAttribute('data-method').replace(/&#39;/g, "'"));
+                
+                // Показываем инструкции
+                document.getElementById('instructionsContent').textContent = methodData.instructions;
+                document.getElementById('paymentInstructions').style.display = 'block';
+                
+                // Сохраняем выбранный метод
+                currentService.paymentMethod = methodData;
+                
+                // Прокручиваем к инструкциям
+                setTimeout(() => {
+                    document.getElementById('paymentInstructions').scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'nearest' 
+                    });
+                }, 100);
+            }
         }
 
         // Функция завершения оплаты
@@ -657,6 +753,14 @@
                     document.getElementById('paymentInstructions').style.display = 'none';
                     document.getElementById('successMessage').style.display = 'block';
                     console.log('✅ Заказ создан:', await response.json());
+                    
+                    // Прокручиваем к сообщению об успехе
+                    setTimeout(() => {
+                        document.getElementById('successMessage').scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
+                    }, 100);
                 } else {
                     throw new Error('Ошибка создания заказа');
                 }
@@ -672,11 +776,13 @@
             document.querySelectorAll('.payment-method').forEach(method => {
                 method.classList.remove('selected');
             });
+            currentService.paymentMethod = null;
         }
 
         // Функция закрытия модального окна
         function closeModal() {
             document.getElementById('buyModal').style.display = 'none';
+            document.body.classList.remove('modal-open');
             currentService = null;
         }
 
@@ -686,15 +792,37 @@
             document.querySelector('.close').addEventListener('click', closeModal);
             
             // Закрытие модального окна по клику вне его
-            window.addEventListener('click', function(event) {
-                if (event.target === document.getElementById('buyModal')) {
+            document.getElementById('buyModal').addEventListener('click', function(event) {
+                if (event.target === this) {
                     closeModal();
                 }
             });
             
+            // Запрещаем закрытие при клике на контент модального окна
+            document.querySelector('.modal-content').addEventListener('click', function(event) {
+                event.stopPropagation();
+            });
+            
             // Загружаем данные при старте
             loadShopData();
+            
+            // Обработка клавиши Escape
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeModal();
+                }
+            });
         });
+
+        // Предотвращаем скролл основного контента когда модальное окно открыто
+        document.addEventListener('touchmove', function(event) {
+            if (document.body.classList.contains('modal-open')) {
+                // Разрешаем скролл только внутри модального окна
+                if (!event.target.closest('.modal-content')) {
+                    event.preventDefault();
+                }
+            }
+        }, { passive: false });
     </script>
 </body>
 </html>
