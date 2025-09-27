@@ -220,6 +220,43 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
         
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-label:hover {
+            background: #e9ecef;
+            border-color: #3498db;
+        }
+        
+        .file-input-label.has-file {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        
         @media (max-width: 768px) {
             .tabs {
                 flex-direction: column;
@@ -303,7 +340,7 @@
         <div id="services" class="tab-content">
             <h2>Добавление услуги</h2>
             
-            <form id="serviceForm">
+            <form id="serviceForm" enctype="multipart/form-data">
                 <div class="form-group">
                     <label>📋 Артикул:</label>
                     <input type="text" name="article" placeholder="SRV001" required>
@@ -332,13 +369,25 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>🖼️ Изображение:</label>
-                    <input type="file" name="image" accept="image/*">
-                    <div class="image-preview"></div>
+                    <label>🖼️ Изображение услуги:</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" name="image" accept="image/*" id="imageInput">
+                        <label for="imageInput" class="file-input-label" id="fileInputLabel">
+                            📁 Нажмите для выбора изображения или перетащите файл сюда
+                        </label>
+                    </div>
+                    <div class="image-preview" id="imagePreview"></div>
                 </div>
                 
                 <button type="submit">➕ Добавить услугу</button>
             </form>
+            
+            <div id="services-list" style="margin-top: 40px;">
+                <h3>Список услуг</h3>
+                <div id="servicesContainer" class="service-grid">
+                    <!-- Список услуг будет загружен здесь -->
+                </div>
+            </div>
         </div>
         
         <div id="categories" class="tab-content">
@@ -350,7 +399,7 @@
             <h2>Диагностика системы</h2>
             <div class="form-group">
                 <label>Статус системы:</label>
-                <pre id="debug-info" style="background: #f8f9fa; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace;"></pre>
+                <pre id="debug-info" style="background: #f8f9fa; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; max-height: 400px; overflow-y: auto;"></pre>
             </div>
             <button onclick="loadDebugInfo()">🔄 Обновить диагностику</button>
         </div>
@@ -369,9 +418,88 @@
             }
         }
         
-        // Загружаем диагностику при открытии вкладки
+        // Функция для загрузки списка услуг
+        async function loadServicesList() {
+            try {
+                const response = await fetch('/api/services');
+                const services = await response.json();
+                
+                const container = document.getElementById('servicesContainer');
+                
+                if (services.length === 0) {
+                    container.innerHTML = '<p>Услуги пока не добавлены</p>';
+                    return;
+                }
+                
+                container.innerHTML = services.map(service => `
+                    <div class="service-card">
+                        ${service.image_url ? 
+                            `<img src="${service.image_url}" alt="${service.name}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 5px; margin-bottom: 10px;">` : 
+                            '<div style="height: 150px; background: #e9ecef; display: flex; align-items: center; justify-content: center; border-radius: 5px; margin-bottom: 10px; color: #6c757d;">🖼️ Нет изображения</div>'
+                        }
+                        <h4>${service.name}</h4>
+                        <p><strong>Артикул:</strong> ${service.article}</p>
+                        <p><strong>Цена:</strong> ${service.price} руб.</p>
+                        ${service.description ? `<p>${service.description}</p>` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Ошибка загрузки списка услуг:', error);
+            }
+        }
+        
+        // Обработчики для drag and drop загрузки изображений
         document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('imageInput');
+            const fileInputLabel = document.getElementById('fileInputLabel');
+            const imagePreview = document.getElementById('imagePreview');
+            
+            // Обработчик изменения файла
+            fileInput.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    fileInputLabel.textContent = `📁 Выбран файл: ${this.files[0].name}`;
+                    fileInputLabel.classList.add('has-file');
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.innerHTML = `<img src="${e.target.result}" alt="Предпросмотр">`;
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+            
+            // Обработчики для drag and drop
+            fileInputLabel.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.background = '#e9ecef';
+                this.style.borderColor = '#3498db';
+            });
+            
+            fileInputLabel.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.background = '';
+                this.style.borderColor = '';
+            });
+            
+            fileInputLabel.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.background = '';
+                this.style.borderColor = '';
+                
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    fileInput.files = e.dataTransfer.files;
+                    const event = new Event('change');
+                    fileInput.dispatchEvent(event);
+                }
+            });
+            
+            // Загружаем диагностику при открытии вкладки
             loadDebugInfo();
+            
+            // Загружаем список услуг при открытии вкладки услуг
+            document.querySelector('.tab-button[onclick="openTab(\'services\')"]').addEventListener('click', function() {
+                setTimeout(loadServicesList, 100);
+            });
         });
     </script>
 </body>
