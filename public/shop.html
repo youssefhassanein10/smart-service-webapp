@@ -2,191 +2,278 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Service</title>
+  <title>Smart Service - MiniApp</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
-  <!-- Шапка магазина -->
-  <header class="bg-primary text-white py-3 mb-4 text-center">
-    <h1>Smart Service</h1>
-    <nav id="categoryNav" class="mt-2">
-      <!-- Категории подгрузятся через JS -->
-    </nav>
-  </header>
+<header class="bg-primary text-white py-3 mb-4 text-center">
+  <h1 id="storeName">Smart Service</h1>
+  <nav id="categoryNav" class="mt-2"></nav>
+</header>
 
-  <!-- Основной блок с товарами -->
-  <div class="container py-4">
-    <div id="products" class="row g-4"></div>
+<div class="container py-4">
+  <div class="d-flex justify-content-between mb-3">
+    <button class="btn btn-success btn-sm" id="addCategoryBtn">Добавить категорию</button>
+    <button class="btn btn-success btn-sm" id="addProductBtn">Добавить товар</button>
+    <button class="btn btn-secondary btn-sm" id="editStoreBtn">Редактировать магазин</button>
   </div>
+  <div id="products" class="row g-4"></div>
+</div>
 
-  <!-- Footer -->
-  <footer class="bg-dark text-white py-4 mt-5">
-    <div class="container text-center">
-      <p>Smart Service / ИП Ефимова Анастасия Александровна</p>
-      <p>ИНН: 1234567890</p>
-      <p>Адрес: г. Москва, ул. Примерная, д.1</p>
-      <p>Email: info@smartservice.ru | Телефон: +7 (999) 123-45-67</p>
-    </div>
-  </footer>
+<footer class="bg-dark text-white py-4 mt-5">
+  <div class="container text-center" id="footerInfo"></div>
+</footer>
 
-  <!-- Модальное окно регистрации -->
-  <div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Добро пожаловать! Регистрация</h5>
-        </div>
-        <div class="modal-body">
-          <form id="registerForm">
-            <div class="mb-3">
-              <label class="form-label">Имя</label>
-              <input type="text" class="form-control" name="name" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-control" name="email" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Телефон</label>
-              <input type="tel" class="form-control" name="phone" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
-          </form>
-        </div>
+<!-- Модальные окна -->
+
+<!-- Регистрация -->
+<div class="modal fade" id="registerModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Регистрация</h5></div>
+      <div class="modal-body">
+        <form id="registerForm">
+          <div class="mb-3"><label class="form-label">Имя</label><input type="text" class="form-control" name="name" required></div>
+          <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
+          <div class="mb-3"><label class="form-label">Телефон</label><input type="tel" class="form-control" name="phone" required></div>
+          <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+        </form>
       </div>
     </div>
   </div>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    let allProducts = []; // Все товары для фильтрации
-    let selectedCategory = null;
+<!-- Добавление/редактирование категории -->
+<div class="modal fade" id="categoryModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="categoryModalTitle">Добавить категорию</h5></div>
+      <div class="modal-body">
+        <form id="categoryForm">
+          <input type="hidden" name="id">
+          <div class="mb-3"><label class="form-label">Название категории</label><input type="text" class="form-control" name="name" required></div>
+          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
-    async function loadStoreInfo() {
-      const res = await fetch('/api/store_info');
-      const store = await res.json();
+<!-- Добавление/редактирование товара -->
+<div class="modal fade" id="productModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="productModalTitle">Добавить товар</h5></div>
+      <div class="modal-body">
+        <form id="productForm" enctype="multipart/form-data">
+          <input type="hidden" name="id">
+          <div class="mb-3"><label class="form-label">Название</label><input type="text" class="form-control" name="title" required></div>
+          <div class="mb-3"><label class="form-label">Описание</label><textarea class="form-control" name="description"></textarea></div>
+          <div class="mb-3"><label class="form-label">Цена</label><input type="number" class="form-control" name="price" required></div>
+          <div class="mb-3"><label class="form-label">Фото товара</label><input type="file" class="form-control" name="image"></div>
+          <div class="mb-3"><label class="form-label">Категория</label><select class="form-select" name="category_id"></select></div>
+          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
-      // Шапка
-      const headerTitle = document.querySelector('header h1');
-      if(headerTitle) headerTitle.textContent = store.name || 'Smart Service';
+<!-- Редактирование магазина -->
+<div class="modal fade" id="storeModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Редактировать магазин</h5></div>
+      <div class="modal-body">
+        <form id="storeForm">
+          <div class="mb-3"><label class="form-label">Название</label><input type="text" class="form-control" name="name"></div>
+          <div class="mb-3"><label class="form-label">ИНН</label><input type="text" class="form-control" name="inn"></div>
+          <div class="mb-3"><label class="form-label">Адрес</label><input type="text" class="form-control" name="address"></div>
+          <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email"></div>
+          <div class="mb-3"><label class="form-label">Телефон</label><input type="tel" class="form-control" name="phone"></div>
+          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
-      // Футер
-      const footer = document.querySelector('footer .container');
-      if(footer) {
-        footer.innerHTML = `
-          <p class="mb-1">${store.name || 'Smart Service'} / ИП Ефимова Анастасия Александровна</p>
-          <p class="mb-1">ИНН: ${store.inn || '1234567890'}</p>
-          <p class="mb-1">Адрес: ${store.address || 'г. Москва, ул. Примерная, д.1'}</p>
-          <p class="mb-1">Email: ${store.email || 'info@smartservice.ru'} | Телефон: ${store.phone || '+7 (999) 123-45-67'}</p>
-        `;
-      }
-    }
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let allProducts = [];
+let selectedCategory = null;
 
-    async function loadCategories() {
-      const res = await fetch('/api/categories');
-      const categories = await res.json();
-      const nav = document.getElementById('categoryNav');
-      nav.innerHTML = '';
+const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+const categoryModal = new bootstrap.Modal(document.getElementById('categoryModal'));
+const productModal = new bootstrap.Modal(document.getElementById('productModal'));
+const storeModal = new bootstrap.Modal(document.getElementById('storeModal'));
 
-      // "Все" категория
-      const allBtn = document.createElement('button');
-      allBtn.className = 'btn btn-light btn-sm mx-1';
-      allBtn.textContent = 'Все';
-      allBtn.onclick = () => { selectedCategory = null; renderProducts(); };
-      nav.appendChild(allBtn);
+async function loadStoreInfo(){
+  const res = await fetch('/api/store_info');
+  const store = await res.json();
+  document.getElementById('storeName').textContent = store.name || 'Smart Service';
+  const footer = document.getElementById('footerInfo');
+  footer.innerHTML = `
+    <p>${store.name || 'Smart Service'} / ИП Ефимова Анастасия Александровна</p>
+    <p>ИНН: ${store.inn || '1234567890'}</p>
+    <p>Адрес: ${store.address || 'г. Москва, ул. Примерная, д.1'}</p>
+    <p>Email: ${store.email || 'info@smartservice.ru'} | Телефон: ${store.phone || '+7 (999) 123-45-67'}</p>
+  `;
+}
 
-      categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-light btn-sm mx-1';
-        btn.textContent = cat.name;
-        btn.onclick = () => { selectedCategory = cat.id; renderProducts(); };
-        nav.appendChild(btn);
-      });
-    }
+async function loadCategories(){
+  const res = await fetch('/api/categories');
+  const categories = await res.json();
+  const nav = document.getElementById('categoryNav');
+  nav.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.className = 'btn btn-light btn-sm mx-1';
+  allBtn.textContent = 'Все';
+  allBtn.onclick = ()=>{selectedCategory=null; renderProducts();};
+  nav.appendChild(allBtn);
 
-    async function loadProducts() {
-      const res = await fetch('/api/products');
-      allProducts = await res.json();
-      renderProducts();
-    }
+  categories.forEach(cat=>{
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-light btn-sm mx-1';
+    btn.textContent = cat.name;
+    btn.onclick = ()=>{selectedCategory=cat.id; renderProducts();};
+    nav.appendChild(btn);
+  });
 
-    function renderProducts() {
-      const container = document.getElementById('products');
-      container.innerHTML = '';
+  const select = document.querySelector('#productForm select[name="category_id"]');
+  select.innerHTML = '';
+  categories.forEach(cat=>{
+    const opt = document.createElement('option');
+    opt.value = cat.id; opt.textContent=cat.name;
+    select.appendChild(opt);
+  });
+}
 
-      let productsToShow = selectedCategory ? allProducts.filter(p => p.category_id == selectedCategory) : allProducts;
+async function loadProducts(){
+  const res = await fetch('/api/products');
+  allProducts = await res.json();
+  renderProducts();
+}
 
-      if(productsToShow.length === 0){
-        container.innerHTML = '<p>Товаров пока нет</p>';
-        return;
-      }
-
-      productsToShow.forEach(p => {
-        const img = p.image_url ? p.image_url : 'https://via.placeholder.com/300x200?text=Нет+фото';
-        const card = document.createElement('div');
-        card.className = 'col-md-4';
-        card.innerHTML = `
-          <div class="card h-100 shadow-sm">
-            <img src="${img}" class="card-img-top" alt="${p.title}">
-            <div class="card-body d-flex flex-column">
-              <h5 class="card-title">${p.title}</h5>
-              <p class="card-text">${p.description || ''}</p>
-              <div class="mt-auto">
-                <p class="fw-bold">${p.price} ₽</p>
-                <button class="btn btn-primary w-100 buy-btn">Купить</button>
-              </div>
+function renderProducts(){
+  const container = document.getElementById('products');
+  container.innerHTML = '';
+  let productsToShow = selectedCategory ? allProducts.filter(p=>p.category_id==selectedCategory) : allProducts;
+  if(productsToShow.length===0){container.innerHTML='<p>Товаров пока нет</p>'; return;}
+  productsToShow.forEach(p=>{
+    const img = p.image_url ? p.image_url : 'https://via.placeholder.com/300x200?text=Нет+фото';
+    const card = document.createElement('div');
+    card.className='col-md-4';
+    card.innerHTML=`
+      <div class="card h-100 shadow-sm">
+        <img src="${img}" class="card-img-top" alt="${p.title}">
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">${p.title}</h5>
+          <p class="card-text">${p.description || ''}</p>
+          <div class="mt-auto">
+            <p class="fw-bold">${p.price} ₽</p>
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-primary btn-sm buy-btn">Купить</button>
+              <button class="btn btn-warning btn-sm edit-btn">Редактировать</button>
+              <button class="btn btn-danger btn-sm delete-btn">Удалить</button>
             </div>
           </div>
-        `;
-
-        card.querySelector('.buy-btn').addEventListener('click', async () => {
-          const userData = JSON.parse(localStorage.getItem('userData'));
-          if(!userData){
-            alert('Пожалуйста, зарегистрируйтесь!');
-            return;
-          }
-          await fetch('/api/buy', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({user:userData, productId:p.id})
-          });
-          alert(`Товар "${p.title}" добавлен в корзину!`);
-        });
-
-        container.appendChild(card);
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      loadStoreInfo();
-      loadCategories();
+        </div>
+      </div>
+    `;
+    card.querySelector('.buy-btn').onclick=async()=>{
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if(!userData){alert('Пожалуйста, зарегистрируйтесь!'); return;}
+      await fetch('/api/buy',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:userData,productId:p.id})});
+      alert(`Товар "${p.title}" добавлен в корзину!`);
+    };
+    card.querySelector('.edit-btn').onclick=()=>openProductModal(p);
+    card.querySelector('.delete-btn').onclick=async()=>{
+      await fetch(`/api/products/${p.id}`,{method:'DELETE'});
       loadProducts();
+    };
+    container.appendChild(card);
+  });
+}
 
-      // Регистрация
-      if(!localStorage.getItem('userRegistered')){
-        const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
-        registerModal.show();
+function openProductModal(product=null){
+  const form = document.getElementById('productForm');
+  form.reset();
+  if(product){
+    document.getElementById('productModalTitle').textContent='Редактировать товар';
+    form.id.value=product.id; form.title.value=product.title; form.description.value=product.description||''; form.price.value=product.price;
+    form.category_id.value=product.category_id;
+  }else{
+    document.getElementById('productModalTitle').textContent='Добавить товар';
+    form.id.value='';
+  }
+  productModal.show();
+}
 
-        document.getElementById('registerForm').addEventListener('submit', async (e)=>{
-          e.preventDefault();
-          const form = e.target;
-          const data = {
-            name: form.name.value,
-            email: form.email.value,
-            phone: form.phone.value
-          };
-          await fetch('/api/register', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify(data)
-          });
-          localStorage.setItem('userRegistered','true');
-          localStorage.setItem('userData', JSON.stringify(data));
-          registerModal.hide();
-        });
-      }
+document.addEventListener('DOMContentLoaded',()=>{
+  loadStoreInfo(); loadCategories(); loadProducts();
+
+  // регистрация
+  if(!localStorage.getItem('userRegistered')){
+    registerModal.show();
+    document.getElementById('registerForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const form=e.target;
+      const data={name:form.name.value,email:form.email.value,phone:form.phone.value};
+      await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      localStorage.setItem('userRegistered','true'); localStorage.setItem('userData',JSON.stringify(data));
+      registerModal.hide();
     });
-  </script>
+  }
+
+  document.getElementById('addCategoryBtn').onclick=()=>{document.getElementById('categoryModalTitle').textContent='Добавить категорию'; document.getElementById('categoryForm').reset(); categoryModal.show();};
+  document.getElementById('addProductBtn').onclick=()=>openProductModal();
+  document.getElementById('editStoreBtn').onclick=async()=>{
+    const res = await fetch('/api/store_info'); const store = await res.json();
+    const form = document.getElementById('storeForm');
+    form.name.value=store.name||''; form.inn.value=store.inn||''; form.address.value=store.address||''; form.email.value=store.email||''; form.phone.value=store.phone||'';
+    storeModal.show();
+  };
+
+  document.getElementById('categoryForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const form = e.target;
+    const data={name:form.name.value};
+    await fetch('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    categoryModal.hide(); loadCategories();
+  });
+
+  document.getElementById('productForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const form = e.target;
+    const id = form.id.value;
+    const fileInput = form.image;
+    const formData = new FormData();
+    formData.append('title', form.title.value);
+    formData.append('description', form.description.value);
+    formData.append('price', form.price.value);
+    formData.append('category_id', form.category_id.value);
+    if(fileInput.files[0]) formData.append('image', fileInput.files[0]);
+
+    if(id){ // редактирование
+      await fetch(`/api/products/${id}`,{method:'PUT',body:formData});
+    }else{ // добавление
+      await fetch('/api/products',{method:'POST',body:formData});
+    }
+    productModal.hide();
+    loadProducts();
+  });
+
+  document.getElementById('storeForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const form=e.target;
+    const data={name:form.name.value,inn:form.inn.value,address:form.address.value,email:form.email.value,phone:form.phone.value};
+    await fetch('/api/store_info',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    storeModal.hide(); loadStoreInfo();
+  });
+
+});
+</script>
 </body>
 </html>
