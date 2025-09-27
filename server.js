@@ -2,13 +2,18 @@ const express = require('express');
 const fileUpload = require('express-fileupload');
 const { Pool } = require('pg');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(fileUpload());
+app.use(fileUpload({
+    createParentPath: true,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    useTempFiles: false
+}));
 app.use(express.static('public'));
 
 // CORS middleware
@@ -36,6 +41,33 @@ let memoryData = {
     services: [],
     categories: []
 };
+
+// Функция для сохранения загруженных изображений
+function saveUploadedImage(imageFile) {
+    if (!imageFile) return null;
+    
+    try {
+        // Создаем папку для загрузок, если её нет
+        const uploadDir = path.join(__dirname, 'public', 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        
+        // Генерируем уникальное имя файла
+        const fileExtension = path.extname(imageFile.name);
+        const fileName = `service_${Date.now()}${fileExtension}`;
+        const filePath = path.join(uploadDir, fileName);
+        
+        // Сохраняем файл
+        imageFile.mv(filePath);
+        
+        // Возвращаем относительный путь для доступа через веб
+        return `/uploads/${fileName}`;
+    } catch (error) {
+        console.error('❌ Ошибка сохранения изображения:', error);
+        return null;
+    }
+}
 
 // Функция подключения к базе данных
 async function connectDatabase() {
@@ -205,7 +237,7 @@ app.get('/api/services', async (req, res) => {
                 FROM services s 
                 LEFT JOIN categories c ON s.category_id = c.id 
                 WHERE s.is_active = true 
-                ORDER BY s.name
+                ORDER BY s.created_at DESC
             `);
             return res.json(result.rows);
         }
@@ -215,17 +247,28 @@ app.get('/api/services', async (req, res) => {
     }
 });
 
+// Сохранить услугу с изображением
 app.post('/api/services', async (req, res) => {
     try {
-        const { article, name, description, price, category_id } = req.body;
+        console.log('📨 Получен запрос на добавление услуги:', req.body);
         
+        const { article, name, description, price, category_id } = req.body;
+        let imageUrl = null;
+
+        // Обрабатываем загруженное изображение
+        if (req.files && req.files.image) {
+            imageUrl = saveUploadedImage(req.files.image);
+            console.log('🖼️ Изображение сохранено:', imageUrl);
+        }
+
         if (pool) {
             const result = await pool.query(
-                `INSERT INTO services (article, name, description, price, category_id) 
-                 VALUES ($1, $2, $3, $4, $5) 
+                `INSERT INTO services (article, name, description, price, category_id, image_url) 
+                 VALUES ($1, $2, $3, $4, $5, $6) 
                  RETURNING *`,
-                [article, name, description, parseFloat(price), category_id || null]
+                [article, name, description, parseFloat(price), category_id || null, imageUrl]
             );
+            console.log('✅ Услуга сохранена в БД');
             return res.json(result.rows[0]);
         } else {
             const newService = {
@@ -235,12 +278,15 @@ app.post('/api/services', async (req, res) => {
                 description, 
                 price: parseFloat(price), 
                 category_id: category_id || null,
+                image_url: imageUrl,
                 created_at: new Date()
             };
             memoryData.services.push(newService);
+            console.log('✅ Услуга сохранена в памяти');
             res.json(newService);
         }
     } catch (error) {
+        console.error('❌ Ошибка сохранения услуги:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -273,6 +319,9 @@ app.get('/api/debug', async (req, res) => {
                 settings: memoryData.settings,
                 servicesCount: memoryData.services.length,
                 categoriesCount: memoryData.categories.length
+            },
+            uploads: {
+                directoryExists: fs.existsSync(path.join(__dirname, 'public', 'uploads'))
             }
         };
 
@@ -286,6 +335,9 @@ app.get('/api/debug', async (req, res) => {
 
             const settingsCount = await pool.query('SELECT COUNT(*) FROM shop_settings');
             debugInfo.database.settingsCount = parseInt(settingsCount.rows[0].count);
+
+            const servicesCount = await pool.query('SELECT COUNT(*) FROM services');
+            debugInfo.database.servicesCount = parseInt(servicesCount.rows[0].count);
         }
 
         res.json(debugInfo);
