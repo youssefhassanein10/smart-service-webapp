@@ -1,5 +1,5 @@
 {
-  "name": "telegram-shop",
+  "name": "telegram-shop-bot",
   "version": "1.0.0",
   "description": "Магазин услуг для Telegram мини-приложения",
   "main": "server.js",
@@ -13,6 +13,6 @@
     "express-fileupload": "^1.4.3"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0"
   }
 }
