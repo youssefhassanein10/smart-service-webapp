@@ -56,12 +56,6 @@
     <button class="btn btn-success mb-3" id="addProductBtn">Добавить товар</button>
     <div id="productList" class="row g-3"></div>
   </section>
-
-  <!-- Пользователи -->
-  <section class="mb-5">
-    <h3>Зарегистрированные пользователи</h3>
-    <ul id="userList" class="list-group"></ul>
-  </section>
 </div>
 
 <!-- Модальное окно для добавления/редактирования товара -->
@@ -88,12 +82,12 @@
             <input type="number" class="form-control" name="price" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">Фото с компьютера</label>
-            <input type="file" class="form-control" name="image_file" accept="image/*">
+            <label class="form-label">Фото товара</label>
+            <input type="file" class="form-control" name="image">
           </div>
           <div class="mb-3">
             <label class="form-label">Категория</label>
-            <select class="form-select" name="category_id"></select>
+            <select class="form-select" name="category_id" required></select>
           </div>
           <button type="submit" class="btn btn-primary w-100">Сохранить</button>
         </form>
@@ -104,79 +98,73 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let productModal = new bootstrap.Modal(document.getElementById('productModal'));
+const ADMIN_TOKEN = 'SUPER_SECRET_TOKEN';
+const productModal = new bootstrap.Modal(document.getElementById('productModal'));
 
-// --- Магазин ---
-async function loadStore() {
-  const res = await fetch('/api/store_info');
-  const data = await res.json();
-  const form = document.getElementById('storeForm');
-  form.name.value = data.name || '';
-  form.inn.value = data.inn || '';
-  form.address.value = data.address || '';
-  form.email.value = data.email || '';
-  form.phone.value = data.phone || '';
-}
-document.getElementById('storeForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const form = e.target;
-  const data = {
-    name: form.name.value,
-    inn: form.inn.value,
-    address: form.address.value,
-    email: form.email.value,
-    phone: form.phone.value
-  };
-  await fetch('/api/store_info', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
-  alert('Информация магазина сохранена');
-});
-
-// --- Категории ---
+// --- Загрузка категорий ---
 async function loadCategories() {
   const res = await fetch('/api/categories');
   const categories = await res.json();
+
   const list = document.getElementById('categoryList');
   const select = document.querySelector('select[name="category_id"]');
   list.innerHTML = '';
   select.innerHTML = '';
+
   categories.forEach(cat => {
+    // список категорий
     const li = document.createElement('li');
-    li.className='list-group-item d-flex justify-content-between align-items-center';
+    li.className = 'list-group-item d-flex justify-content-between align-items-center';
     li.textContent = cat.name;
+
     const btn = document.createElement('button');
-    btn.className='btn btn-sm btn-danger';
-    btn.textContent='Удалить';
-    btn.onclick=async()=>{await fetch(`/api/categories/${cat.id}`,{method:'DELETE'}); loadCategories();};
+    btn.className = 'btn btn-sm btn-danger';
+    btn.textContent = 'Удалить';
+    btn.onclick = async () => {
+      await fetch(`/api/categories/${cat.id}`, {method:'DELETE', headers:{'x-admin-token':ADMIN_TOKEN}});
+      loadCategories();
+    };
     li.appendChild(btn);
     list.appendChild(li);
 
-    const option = document.createElement('option');
-    option.value = cat.id;
-    option.textContent = cat.name;
-    select.appendChild(option);
+    // выпадающий список
+    const opt = document.createElement('option');
+    opt.value = cat.id;
+    opt.textContent = cat.name;
+    select.appendChild(opt);
   });
 }
-document.getElementById('addCategoryBtn').addEventListener('click', async e=>{
+
+// --- Добавление категории ---
+document.getElementById('addCategoryBtn').addEventListener('click', async e => {
   e.preventDefault();
   const input = document.getElementById('newCategory');
   if(!input.value) return;
-  await fetch('/api/categories', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name: input.value})});
-  input.value='';
+  await fetch('/api/categories', {
+    method: 'POST',
+    headers: {
+      'Content-Type':'application/json',
+      'x-admin-token': ADMIN_TOKEN
+    },
+    body: JSON.stringify({name: input.value})
+  });
+  input.value = '';
   loadCategories();
 });
 
-// --- Товары ---
+// --- Загрузка товаров ---
 async function loadProducts() {
   const res = await fetch('/api/products');
   const products = await res.json();
   const container = document.getElementById('productList');
-  container.innerHTML='';
-  products.forEach(p=>{
-    const div=document.createElement('div');
-    div.className='col-md-4';
-    div.innerHTML=`
+  container.innerHTML = '';
+
+  products.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'col-md-4';
+    div.innerHTML = `
       <div class="card p-2 h-100">
-        <img src="${p.image_url || ''}" class="img-fluid mb-2" />
+        <img src="${p.image_url || 'https://via.placeholder.com/300x200?text=Нет+фото'}" class="card-img-top mb-2">
         <h5>${p.title}</h5>
         <p>${p.description || ''}</p>
         <p class="fw-bold">${p.price} ₽</p>
@@ -186,62 +174,53 @@ async function loadProducts() {
         </div>
       </div>
     `;
-    div.querySelector('.delete-btn').onclick = async()=>{await fetch(`/api/products/${p.id}`,{method:'DELETE'}); loadProducts();};
-    div.querySelector('.edit-btn').onclick=()=>openProductModal(p);
+    // удалить
+    div.querySelector('.delete-btn').onclick = async () => {
+      await fetch(`/api/products/${p.id}`, {method:'DELETE', headers:{'x-admin-token':ADMIN_TOKEN}});
+      loadProducts();
+    };
+    // редактировать
+    div.querySelector('.edit-btn').onclick = () => openProductModal(p);
     container.appendChild(div);
   });
 }
 
-function openProductModal(product=null){
+// --- Открытие модального окна товара ---
+function openProductModal(p=null){
   const form = document.getElementById('productForm');
-  if(product){
-    document.getElementById('productModalTitle').textContent='Редактировать товар';
-    form.id.value=product.id;
-    form.title.value=product.title;
-    form.description.value=product.description||'';
-    form.price.value=product.price;
-    form.category_id.value=product.category_id||'';
+  if(p){
+    document.getElementById('productModalTitle').textContent = 'Редактировать товар';
+    form.id.value = p.id;
+    form.title.value = p.title;
+    form.description.value = p.description || '';
+    form.price.value = p.price;
+    form.category_id.value = p.category_id || '';
   } else {
-    document.getElementById('productModalTitle').textContent='Добавить товар';
+    document.getElementById('productModalTitle').textContent = 'Добавить товар';
     form.reset();
-    form.id.value='';
+    form.id.value = '';
   }
   productModal.show();
 }
-
 document.getElementById('addProductBtn').addEventListener('click', ()=>openProductModal());
 
-document.getElementById('productForm').addEventListener('submit', async e=>{
+// --- Сохранение товара ---
+document.getElementById('productForm').addEventListener('submit', async e => {
   e.preventDefault();
   const form = e.target;
   const formData = new FormData(form);
-  const method = form.id.value ? 'PUT' : 'POST';
+
   const url = form.id.value ? `/api/products/${form.id.value}` : '/api/products';
-  await fetch(url,{method, body: formData});
+  const method = form.id.value ? 'PUT' : 'POST';
+
+  await fetch(url, {method, headers:{'x-admin-token':ADMIN_TOKEN}, body: formData});
   productModal.hide();
   loadProducts();
 });
 
-// --- Пользователи ---
-async function loadUsers() {
-  const res = await fetch('/api/users');
-  const users = await res.json();
-  const list = document.getElementById('userList');
-  list.innerHTML='';
-  users.forEach(u=>{
-    const li=document.createElement('li');
-    li.className='list-group-item';
-    li.textContent=u.name + ' (' + u.email + ')';
-    list.appendChild(li);
-  });
-}
-
 // --- Инициализация ---
-loadStore();
 loadCategories();
 loadProducts();
-loadUsers();
 </script>
-
 </body>
 </html>
