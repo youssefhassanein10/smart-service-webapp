@@ -9,7 +9,7 @@ const { open } = require('sqlite'); // async open
 const { stringify } = require('csv-stringify/sync');
 const { v4: uuidv4 } = require('uuid');
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'changeme';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '012127471266Jo@';
 const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'database.sqlite');
 
