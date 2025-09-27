@@ -5,17 +5,14 @@ async function saveShopSettings() {
     const originalText = submitButton.textContent;
     
     try {
-        // Показываем индикатор загрузки
         submitButton.textContent = 'Сохранение...';
         submitButton.disabled = true;
 
-        // Собираем данные формы
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
         console.log('📤 Отправка данных:', data);
 
-        // Валидация
         if (!data.shop_name || !data.shop_name.trim()) {
             alert('⚠️ Введите название магазина');
             return;
@@ -26,7 +23,6 @@ async function saveShopSettings() {
             return;
         }
 
-        // Отправляем запрос
         const response = await fetch('/api/shop-settings', {
             method: 'POST',
             headers: {
@@ -48,7 +44,6 @@ async function saveShopSettings() {
         console.error('❌ Ошибка:', error);
         alert('❌ Ошибка сохранения: ' + error.message);
     } finally {
-        // Восстанавливаем кнопку
         submitButton.textContent = originalText;
         submitButton.disabled = false;
     }
@@ -68,7 +63,6 @@ async function loadShopSettings() {
         const settings = await response.json();
         console.log('📖 Загруженные настройки:', settings);
         
-        // Заполняем форму данными
         for (const key in settings) {
             const input = document.querySelector(`[name="${key}"]`);
             if (input && settings[key] !== null && settings[key] !== undefined) {
@@ -79,7 +73,6 @@ async function loadShopSettings() {
         console.log('✅ Настройки загружены');
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
-        // Устанавливаем значения по умолчанию
         document.querySelector('[name="shop_name"]').value = 'Smart Service';
     }
 }
@@ -94,10 +87,8 @@ async function saveService() {
         submitButton.textContent = 'Добавление...';
         submitButton.disabled = true;
 
-        // Создаем FormData для отправки файла
         const formData = new FormData(form);
 
-        // Валидация
         const article = formData.get('article');
         const name = formData.get('name');
         const price = formData.get('price');
@@ -109,7 +100,7 @@ async function saveService() {
 
         const response = await fetch('/api/services', {
             method: 'POST',
-            body: formData  // Отправляем как FormData для поддержки файлов
+            body: formData
         });
 
         const result = await response.json();
@@ -120,6 +111,9 @@ async function saveService() {
             const preview = document.querySelector('.image-preview');
             if (preview) preview.innerHTML = '';
             console.log('✅ Услуга создана:', result);
+            
+            // Перезагружаем список услуг
+            loadServicesList();
         } else {
             throw new Error(result.error || `Ошибка ${response.status}`);
         }
@@ -136,10 +130,7 @@ async function saveService() {
 // Функция предпросмотра изображения
 function previewImage(input) {
     const preview = document.querySelector('.image-preview');
-    if (!preview) {
-        console.error('❌ Элемент .image-preview не найден');
-        return;
-    }
+    if (!preview) return;
     
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -163,18 +154,15 @@ function previewImage(input) {
 
 // Функция переключения вкладок
 function openTab(tabName) {
-    // Скрываем все вкладки
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
     
-    // Показываем выбранную вкладку
     const activeTab = document.getElementById(tabName);
     if (activeTab) {
         activeTab.classList.add('active');
     }
     
-    // Обновляем активные кнопки
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -208,13 +196,9 @@ async function checkServerConnection() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Админ-панель загружена');
     
-    // Проверяем соединение с сервером
     checkServerConnection();
-    
-    // Загружаем настройки
     loadShopSettings();
     
-    // Настраиваем обработчики событий
     const shopForm = document.getElementById('shopSettingsForm');
     if (shopForm) {
         shopForm.addEventListener('submit', function(e) {
@@ -225,7 +209,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const serviceForm = document.getElementById('serviceForm');
     if (serviceForm) {
-        // Устанавливаем enctype для формы
         serviceForm.setAttribute('enctype', 'multipart/form-data');
         
         serviceForm.addEventListener('submit', function(e) {
@@ -241,7 +224,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Загружаем категории для выпадающего списка
     loadCategories();
 });
 
@@ -253,12 +235,10 @@ async function loadCategories() {
         
         const select = document.querySelector('select[name="category_id"]');
         if (select && categories.length > 0) {
-            // Очищаем существующие опции (кроме первой)
             while (select.children.length > 1) {
                 select.removeChild(select.lastChild);
             }
             
-            // Добавляем категории
             categories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category.id;
@@ -268,5 +248,35 @@ async function loadCategories() {
         }
     } catch (error) {
         console.error('Ошибка загрузки категорий:', error);
+    }
+}
+
+// Функция для загрузки списка услуг (для админки)
+async function loadServicesList() {
+    try {
+        const response = await fetch('/api/services');
+        const services = await response.json();
+        
+        const container = document.getElementById('servicesContainer');
+        
+        if (services.length === 0) {
+            container.innerHTML = '<p>Услуги пока не добавлены</p>';
+            return;
+        }
+        
+        container.innerHTML = services.map(service => `
+            <div class="service-card">
+                ${service.image_url ? 
+                    `<img src="${service.image_url}" alt="${service.name}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 5px; margin-bottom: 10px;">` : 
+                    '<div style="height: 150px; background: #e9ecef; display: flex; align-items: center; justify-content: center; border-radius: 5px; margin-bottom: 10px; color: #6c757d;">🖼️ Нет изображения</div>'
+                }
+                <h4>${service.name}</h4>
+                <p><strong>Артикул:</strong> ${service.article}</p>
+                <p><strong>Цена:</strong> ${service.price} руб.</p>
+                ${service.description ? `<p>${service.description}</p>` : ''}
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Ошибка загрузки списка услуг:', error);
     }
 }
