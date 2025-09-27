@@ -2,80 +2,84 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>MiniApp Магазин</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiniApp Shop</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+h1 { margin-bottom: 20px; }
+.category-filter { margin-bottom: 20px; }
+.product { border: 1px solid #ddd; padding: 10px; margin-bottom: 15px; display: flex; align-items: center; }
+.product img { max-width: 100px; margin-right: 10px; }
+.product-info { display: flex; flex-direction: column; }
+</style>
 </head>
-<body class="bg-light">
-<div class="container py-4">
-<h1 id="storeName" class="text-center mb-4"></h1>
-<div class="row mb-3">
-<select id="categoryFilter" class="form-select w-auto mx-auto">
+<body>
+<h1>Магазин</h1>
+
+<select id="category-filter" class="category-filter" onchange="filterProducts()">
 <option value="">Все категории</option>
 </select>
-</div>
-<div id="productList" class="row g-3"></div>
 
-<!-- Footer -->
-<footer class="text-center mt-4" id="storeFooter"></footer>
+<div id="products-container"></div>
 
-<!-- Регистрация -->
-<div class="modal" tabindex="-1" id="registerModal">
-<div class="modal-dialog"><div class="modal-content p-3">
-<h5>Регистрация</h5>
-<input type="text" id="regName" placeholder="Имя" class="form-control mb-2">
-<input type="email" id="regEmail" placeholder="Email" class="form-control mb-2">
-<input type="tel" id="regPhone" placeholder="Телефон" class="form-control mb-2">
-<button id="regBtn" class="btn btn-primary">Зарегистрироваться</button>
-</div></div></div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let currentUser = JSON.parse(localStorage.getItem('user')) || null;
-
-async function loadStoreInfo(){
-  const res = await fetch('/api/store_info'); const data=await res.json();
-  document.getElementById('storeName').textContent=data.name||'Магазин';
-  document.getElementById('storeFooter').textContent=`${data.name||''} | ИНН: ${data.inn||''} | ${data.address||''}`;
-}
+let allProducts = [];
+let allCategories = [];
 
 async function loadCategories(){
-  const res = await fetch('/api/categories'); const data=await res.json();
-  const filter = document.getElementById('categoryFilter');
-  filter.innerHTML='<option value="">Все категории</option>';
-  data.forEach(c=>filter.innerHTML+=`<option value="${c.id}">${c.name}</option>`);
+    const res = await fetch('/api/categories');
+    allCategories = await res.json();
+    const filter = document.getElementById('category-filter');
+    filter.innerHTML = '<option value="">Все категории</option>';
+    allCategories.forEach(c=>{
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        filter.appendChild(opt);
+    });
 }
 
-async function loadProducts(category=''){
-  let url='/api/products';
-  const res = await fetch(url); const data=await res.json();
-  if(category) data=data.filter(p=>Number(p.category_id)===Number(category));
-  const list=document.getElementById('productList'); list.innerHTML='';
-  data.forEach(p=>{
-    const div=document.createElement('div'); div.className='col-4 card p-2';
-    div.innerHTML=`<img src="${p.image_url}" class="img-fluid mb-2"><h5>${p.title}</h5><p>${p.description}</p><b>${p.price} ₽</b>`;
-    list.appendChild(div);
-  });
+async function loadProducts(){
+    const res = await fetch('/api/products');
+    allProducts = await res.json();
+    displayProducts(allProducts);
 }
 
-document.getElementById('categoryFilter').addEventListener('change', e=>loadProducts(e.target.value));
-
-if(!currentUser){
-  const modal = new bootstrap.Modal(document.getElementById('registerModal'));
-  modal.show();
-  document.getElementById('regBtn').addEventListener('click', async ()=>{
-    const name=document.getElementById('regName').value;
-    const email=document.getElementById('regEmail').value;
-    const phone=document.getElementById('regPhone').value;
-    if(!name||!email||!phone) return alert('Заполните все поля');
-    await fetch('/api/register',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,email,phone})});
-    localStorage.setItem('user',JSON.stringify({name,email,phone}));
-    modal.hide();
-    currentUser={name,email,phone};
-  });
+function displayProducts(products){
+    const container = document.getElementById('products-container');
+    container.innerHTML = '';
+    products.forEach(p=>{
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `
+            ${p.image_url ? `<img src="${p.image_url}" alt="${p.title}">` : ''}
+            <div class="product-info">
+                <b>${p.title}</b>
+                <span>${p.description || ''}</span>
+                <span>Цена: ${p.price} руб.</span>
+                <span>Категория: ${getCategoryName(p.category_id)}</span>
+            </div>
+        `;
+        container.appendChild(div);
+    });
 }
 
-loadStoreInfo(); loadCategories(); loadProducts();
+function getCategoryName(id){
+    const cat = allCategories.find(c=>c.id==id);
+    return cat ? cat.name : '';
+}
+
+function filterProducts(){
+    const catId = document.getElementById('category-filter').value;
+    if(!catId){
+        displayProducts(allProducts);
+    } else {
+        displayProducts(allProducts.filter(p=>p.category_id==catId));
+    }
+}
+
+// --- Initial load ---
+loadCategories().then(loadProducts);
 </script>
 </body>
 </html>
