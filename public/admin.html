@@ -7,261 +7,241 @@
 </head>
 <body class="bg-light">
 
-  <div class="container py-4">
-    <h1 class="mb-4 text-center">Админ-панель Smart Service</h1>
+<div class="container py-4">
+  <h1 class="mb-4 text-center">Админ-панель Smart Service</h1>
 
-    <!-- Информация о магазине -->
-    <section class="mb-5">
-      <h3>Информация о магазине</h3>
-      <form id="storeForm" class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Название магазина</label>
-          <input type="text" class="form-control" name="name">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">ИНН</label>
-          <input type="text" class="form-control" name="inn">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Адрес</label>
-          <input type="text" class="form-control" name="address">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Email</label>
-          <input type="email" class="form-control" name="email">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Телефон</label>
-          <input type="tel" class="form-control" name="phone">
-        </div>
-        <div class="col-12">
-          <button type="submit" class="btn btn-primary">Сохранить</button>
-        </div>
-      </form>
-    </section>
-
-    <!-- Категории -->
-    <section class="mb-5">
-      <h3>Категории товаров</h3>
-      <div class="d-flex mb-3">
-        <input type="text" id="newCategory" class="form-control me-2" placeholder="Новая категория">
-        <button class="btn btn-success" id="addCategoryBtn">Добавить</button>
+  <!-- Информация о магазине -->
+  <section class="mb-5">
+    <h3>Информация о магазине</h3>
+    <form id="storeForm" class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Название магазина</label>
+        <input type="text" class="form-control" name="name">
       </div>
-      <ul id="categoryList" class="list-group"></ul>
-    </section>
+      <div class="col-md-6">
+        <label class="form-label">ИНН</label>
+        <input type="text" class="form-control" name="inn">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Адрес</label>
+        <input type="text" class="form-control" name="address">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" name="email">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Телефон</label>
+        <input type="tel" class="form-control" name="phone">
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </section>
 
-    <!-- Товары -->
-    <section class="mb-5">
-      <h3>Товары</h3>
-      <button class="btn btn-success mb-3" id="addProductBtn">Добавить товар</button>
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>Фото</th>
-            <th>Название</th>
-            <th>Категория</th>
-            <th>Цена</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody id="productList"></tbody>
-      </table>
-    </section>
+  <!-- Категории -->
+  <section class="mb-5">
+    <h3>Категории товаров</h3>
+    <div class="d-flex mb-3">
+      <input type="text" id="newCategory" class="form-control me-2" placeholder="Новая категория">
+      <button class="btn btn-success" id="addCategoryBtn">Добавить</button>
+    </div>
+    <ul id="categoryList" class="list-group"></ul>
+  </section>
 
-    <!-- Пользователи -->
-    <section class="mb-5">
-      <h3>Зарегистрированные пользователи</h3>
-      <ul id="userList" class="list-group"></ul>
-    </section>
-  </div>
+  <!-- Товары -->
+  <section class="mb-5">
+    <h3>Товары</h3>
+    <button class="btn btn-success mb-3" id="addProductBtn">Добавить товар</button>
+    <div id="productList" class="row g-3"></div>
+  </section>
 
-  <!-- Модальное окно для добавления/редактирования товара -->
-  <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="productModalTitle">Добавить товар</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <form id="productForm" enctype="multipart/form-data">
-            <input type="hidden" name="id">
-            <div class="mb-3">
-              <label class="form-label">Название</label>
-              <input type="text" class="form-control" name="title" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Описание</label>
-              <textarea class="form-control" name="description"></textarea>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Цена</label>
-              <input type="number" class="form-control" name="price" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Фото товара</label>
-              <input type="file" class="form-control" name="image">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Категория</label>
-              <select class="form-select" name="category_id"></select>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Сохранить</button>
-          </form>
-        </div>
+  <!-- Пользователи -->
+  <section class="mb-5">
+    <h3>Зарегистрированные пользователи</h3>
+    <ul id="userList" class="list-group"></ul>
+  </section>
+</div>
+
+<!-- Модальное окно для добавления/редактирования товара -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="productModalTitle">Добавить товар</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="productForm" enctype="multipart/form-data">
+          <input type="hidden" name="id">
+          <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input type="text" class="form-control" name="title" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Описание</label>
+            <textarea class="form-control" name="description"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Цена</label>
+            <input type="number" class="form-control" name="price" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Фото с компьютера</label>
+            <input type="file" class="form-control" name="image_file" accept="image/*">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Категория</label>
+            <select class="form-select" name="category_id"></select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+        </form>
       </div>
     </div>
   </div>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    let productModal = new bootstrap.Modal(document.getElementById('productModal'));
-    let categoriesMap = {};
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let productModal = new bootstrap.Modal(document.getElementById('productModal'));
 
-    // Загрузка категорий
-    async function loadCategories() {
-      const res = await fetch('/api/categories');
-      const categories = await res.json();
-      const list = document.getElementById('categoryList');
-      const select = document.querySelector('select[name="category_id"]');
-      list.innerHTML = '';
-      select.innerHTML = '';
-      categoriesMap = {};
-      categories.forEach(cat => {
-        categoriesMap[cat.id] = cat.name;
-        // Список категорий
-        const li = document.createElement('li');
-        li.className = 'list-group-item d-flex justify-content-between align-items-center';
-        li.textContent = cat.name;
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-sm btn-danger';
-        btn.textContent = 'Удалить';
-        btn.onclick = async () => {
-          await fetch(`/api/categories/${cat.id}`, { method: 'DELETE' });
-          loadCategories();
-        };
-        li.appendChild(btn);
-        list.appendChild(li);
+// --- Магазин ---
+async function loadStore() {
+  const res = await fetch('/api/store_info');
+  const data = await res.json();
+  const form = document.getElementById('storeForm');
+  form.name.value = data.name || '';
+  form.inn.value = data.inn || '';
+  form.address.value = data.address || '';
+  form.email.value = data.email || '';
+  form.phone.value = data.phone || '';
+}
+document.getElementById('storeForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    name: form.name.value,
+    inn: form.inn.value,
+    address: form.address.value,
+    email: form.email.value,
+    phone: form.phone.value
+  };
+  await fetch('/api/store_info', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  alert('Информация магазина сохранена');
+});
 
-        // Выпадающий список категорий
-        const option = document.createElement('option');
-        option.value = cat.id;
-        option.textContent = cat.name;
-        select.appendChild(option);
-      });
-    }
+// --- Категории ---
+async function loadCategories() {
+  const res = await fetch('/api/categories');
+  const categories = await res.json();
+  const list = document.getElementById('categoryList');
+  const select = document.querySelector('select[name="category_id"]');
+  list.innerHTML = '';
+  select.innerHTML = '';
+  categories.forEach(cat => {
+    const li = document.createElement('li');
+    li.className='list-group-item d-flex justify-content-between align-items-center';
+    li.textContent = cat.name;
+    const btn = document.createElement('button');
+    btn.className='btn btn-sm btn-danger';
+    btn.textContent='Удалить';
+    btn.onclick=async()=>{await fetch(`/api/categories/${cat.id}`,{method:'DELETE'}); loadCategories();};
+    li.appendChild(btn);
+    list.appendChild(li);
 
-    // Загрузка товаров
-    async function loadProducts() {
-      const res = await fetch('/api/products');
-      const products = await res.json();
-      const container = document.getElementById('productList');
-      container.innerHTML = '';
-      products.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${p.image_url ? `<img src="${p.image_url}" width="50">` : ''}</td>
-          <td>${p.title}</td>
-          <td>${categoriesMap[p.category_id] || 'Без категории'}</td>
-          <td>${p.price}</td>
-          <td>
-            <button class="btn btn-sm btn-warning edit-btn">Редактировать</button>
-            <button class="btn btn-sm btn-danger delete-btn">Удалить</button>
-          </td>
-        `;
-        tr.querySelector('.edit-btn').onclick = () => openProductModal(p);
-        tr.querySelector('.delete-btn').onclick = async () => {
-          await fetch(`/api/products/${p.id}`, { method: 'DELETE' });
-          loadProducts();
-        };
-        container.appendChild(tr);
-      });
-    }
+    const option = document.createElement('option');
+    option.value = cat.id;
+    option.textContent = cat.name;
+    select.appendChild(option);
+  });
+}
+document.getElementById('addCategoryBtn').addEventListener('click', async e=>{
+  e.preventDefault();
+  const input = document.getElementById('newCategory');
+  if(!input.value) return;
+  await fetch('/api/categories', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name: input.value})});
+  input.value='';
+  loadCategories();
+});
 
-    function openProductModal(product = null) {
-      const form = document.getElementById('productForm');
-      if (product) {
-        document.getElementById('productModalTitle').textContent = 'Редактировать товар';
-        form.id.value = product.id;
-        form.title.value = product.title;
-        form.description.value = product.description || '';
-        form.price.value = product.price;
-        form.category_id.value = product.category_id || '';
-      } else {
-        document.getElementById('productModalTitle').textContent = 'Добавить товар';
-        form.reset();
-        form.id.value = '';
-      }
-      productModal.show();
-    }
+// --- Товары ---
+async function loadProducts() {
+  const res = await fetch('/api/products');
+  const products = await res.json();
+  const container = document.getElementById('productList');
+  container.innerHTML='';
+  products.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='col-md-4';
+    div.innerHTML=`
+      <div class="card p-2 h-100">
+        <img src="${p.image_url || ''}" class="img-fluid mb-2" />
+        <h5>${p.title}</h5>
+        <p>${p.description || ''}</p>
+        <p class="fw-bold">${p.price} ₽</p>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-sm btn-warning edit-btn">Редактировать</button>
+          <button class="btn btn-sm btn-danger delete-btn">Удалить</button>
+        </div>
+      </div>
+    `;
+    div.querySelector('.delete-btn').onclick = async()=>{await fetch(`/api/products/${p.id}`,{method:'DELETE'}); loadProducts();};
+    div.querySelector('.edit-btn').onclick=()=>openProductModal(p);
+    container.appendChild(div);
+  });
+}
 
-    document.getElementById('addProductBtn').addEventListener('click', () => openProductModal());
+function openProductModal(product=null){
+  const form = document.getElementById('productForm');
+  if(product){
+    document.getElementById('productModalTitle').textContent='Редактировать товар';
+    form.id.value=product.id;
+    form.title.value=product.title;
+    form.description.value=product.description||'';
+    form.price.value=product.price;
+    form.category_id.value=product.category_id||'';
+  } else {
+    document.getElementById('productModalTitle').textContent='Добавить товар';
+    form.reset();
+    form.id.value='';
+  }
+  productModal.show();
+}
 
-    document.getElementById('productForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
-      const url = form.id.value ? `/api/products/${form.id.value}` : '/api/products';
-      const method = form.id.value ? 'PUT' : 'POST';
-      await fetch(url, { method, headers: { 'x-admin-token': 'SUPER_SECRET_TOKEN' }, body: formData });
-      productModal.hide();
-      loadProducts();
-    });
+document.getElementById('addProductBtn').addEventListener('click', ()=>openProductModal());
 
-    // Загрузка информации о магазине
-    async function loadStore() {
-      const res = await fetch('/api/store_info');
-      const data = await res.json();
-      const form = document.getElementById('storeForm');
-      form.name.value = data.name || '';
-      form.inn.value = data.inn || '';
-      form.address.value = data.address || '';
-      form.email.value = data.email || '';
-      form.phone.value = data.phone || '';
-    }
+document.getElementById('productForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  const method = form.id.value ? 'PUT' : 'POST';
+  const url = form.id.value ? `/api/products/${form.id.value}` : '/api/products';
+  await fetch(url,{method, body: formData});
+  productModal.hide();
+  loadProducts();
+});
 
-    document.getElementById('storeForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      const form = e.target;
-      await fetch('/api/store_info', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name.value,
-          inn: form.inn.value,
-          address: form.address.value,
-          email: form.email.value,
-          phone: form.phone.value
-        })
-      });
-      alert('Информация сохранена');
-    });
+// --- Пользователи ---
+async function loadUsers() {
+  const res = await fetch('/api/users');
+  const users = await res.json();
+  const list = document.getElementById('userList');
+  list.innerHTML='';
+  users.forEach(u=>{
+    const li=document.createElement('li');
+    li.className='list-group-item';
+    li.textContent=u.name + ' (' + u.email + ')';
+    list.appendChild(li);
+  });
+}
 
-    document.getElementById('addCategoryBtn').addEventListener('click', async () => {
-      const name = document.getElementById('newCategory').value.trim();
-      if (!name) return;
-      await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-      document.getElementById('newCategory').value = '';
-      loadCategories();
-    });
+// --- Инициализация ---
+loadStore();
+loadCategories();
+loadProducts();
+loadUsers();
+</script>
 
-    async function loadUsers() {
-      const res = await fetch('/api/users');
-      const users = await res.json();
-      const ul = document.getElementById('userList');
-      ul.innerHTML = '';
-      users.forEach(u => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item';
-        li.textContent = `${u.name} (${u.email})`;
-        ul.appendChild(li);
-      });
-    }
-
-    // Инициализация
-    loadCategories().then(loadProducts);
-    loadStore();
-    loadUsers();
-  </script>
 </body>
 </html>
